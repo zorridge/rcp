@@ -1,16 +1,21 @@
 'use client';
 
+import { useChat } from '@ai-sdk/react';
+import { CopyIcon, GlobeIcon, RefreshCcwIcon } from 'lucide-react';
+import { useState } from 'react';
+
 import {
   Conversation,
   ConversationContent,
-  ConversationScrollButton
+  ConversationScrollButton,
 } from '@/components/ai-elements/conversation';
+import { Loader } from '@/components/ai-elements/loader';
 import {
   Message,
+  MessageAction,
+  MessageActions,
   MessageContent,
   MessageResponse,
-  MessageActions,
-  MessageAction
 } from '@/components/ai-elements/message';
 import {
   PromptInput,
@@ -22,6 +27,7 @@ import {
   PromptInputAttachments,
   PromptInputBody,
   PromptInputButton,
+  PromptInputFooter,
   PromptInputHeader,
   type PromptInputMessage,
   PromptInputSelect,
@@ -31,37 +37,32 @@ import {
   PromptInputSelectValue,
   PromptInputSubmit,
   PromptInputTextarea,
-  PromptInputFooter,
-  PromptInputTools
+  PromptInputTools,
 } from '@/components/ai-elements/prompt-input';
-import { useState } from 'react';
-import { useChat } from '@ai-sdk/react';
-import { CopyIcon, GlobeIcon, RefreshCcwIcon } from 'lucide-react';
+import {
+  Reasoning,
+  ReasoningContent,
+  ReasoningTrigger,
+} from '@/components/ai-elements/reasoning';
 import {
   Source,
   Sources,
   SourcesContent,
-  SourcesTrigger
+  SourcesTrigger,
 } from '@/components/ai-elements/sources';
-import {
-  Reasoning,
-  ReasoningContent,
-  ReasoningTrigger
-} from '@/components/ai-elements/reasoning';
-import { Loader } from '@/components/ai-elements/loader';
 
 const models = [
   {
     name: 'GPT 4o',
-    value: 'openai/gpt-4o'
+    value: 'openai/gpt-4o',
   },
   {
     name: 'Deepseek R1',
-    value: 'deepseek/deepseek-r1'
-  }
+    value: 'deepseek/deepseek-r1',
+  },
 ];
 
-export const Chat = () => {
+export function Chat() {
   const [input, setInput] = useState('');
   const [model, setModel] = useState<string>(models[0].value);
   const [webSearch, setWebSearch] = useState(false);
@@ -78,38 +79,38 @@ export const Chat = () => {
     sendMessage(
       {
         text: message.text || 'Sent with attachments',
-        files: message.files
+        files: message.files,
       },
       {
         body: {
           model: model,
-          webSearch: webSearch
-        }
+          webSearch: webSearch,
+        },
       }
     );
     setInput('');
   };
 
   return (
-    <div className='max-w-4xl mx-auto p-6 relative size-full h-screen'>
-      <div className='flex flex-col h-full'>
-        <Conversation className='h-full'>
+    <div className="relative mx-auto size-full">
+      <div className="flex h-full flex-col">
+        <Conversation className="h-full">
           <ConversationContent>
-            {messages.map(message => (
+            {messages.map((message) => (
               <div key={message.id}>
                 {message.role === 'assistant' &&
-                  message.parts.filter(part => part.type === 'source-url')
+                  message.parts.filter((part) => part.type === 'source-url')
                     .length > 0 && (
                     <Sources>
                       <SourcesTrigger
                         count={
                           message.parts.filter(
-                            part => part.type === 'source-url'
+                            (part) => part.type === 'source-url'
                           ).length
                         }
                       />
                       {message.parts
-                        .filter(part => part.type === 'source-url')
+                        .filter((part) => part.type === 'source-url')
                         .map((part, i) => (
                           <SourcesContent key={`${message.id}-${i}`}>
                             <Source
@@ -134,15 +135,17 @@ export const Chat = () => {
                               <MessageActions>
                                 <MessageAction
                                   onClick={() => regenerate()}
-                                  label='Retry'>
-                                  <RefreshCcwIcon className='size-3' />
+                                  label="Retry"
+                                >
+                                  <RefreshCcwIcon className="size-3" />
                                 </MessageAction>
                                 <MessageAction
                                   onClick={() =>
                                     navigator.clipboard.writeText(part.text)
                                   }
-                                  label='Copy'>
-                                  <CopyIcon className='size-3' />
+                                  label="Copy"
+                                >
+                                  <CopyIcon className="size-3" />
                                 </MessageAction>
                               </MessageActions>
                             )}
@@ -152,12 +155,13 @@ export const Chat = () => {
                       return (
                         <Reasoning
                           key={`${message.id}-${i}`}
-                          className='w-full'
+                          className="w-full"
                           isStreaming={
                             status === 'streaming' &&
                             i === message.parts.length - 1 &&
                             message.id === messages.at(-1)?.id
-                          }>
+                          }
+                        >
                           <ReasoningTrigger />
                           <ReasoningContent>{part.text}</ReasoningContent>
                         </Reasoning>
@@ -174,17 +178,18 @@ export const Chat = () => {
         </Conversation>
         <PromptInput
           onSubmit={handleSubmit}
-          className='mt-4'
+          className="mt-4"
           globalDrop
-          multiple>
+          multiple
+        >
           <PromptInputHeader>
             <PromptInputAttachments>
-              {attachment => <PromptInputAttachment data={attachment} />}
+              {(attachment) => <PromptInputAttachment data={attachment} />}
             </PromptInputAttachments>
           </PromptInputHeader>
           <PromptInputBody>
             <PromptInputTextarea
-              onChange={e => setInput(e.target.value)}
+              onChange={(e) => setInput(e.target.value)}
               value={input}
             />
           </PromptInputBody>
@@ -198,23 +203,26 @@ export const Chat = () => {
               </PromptInputActionMenu>
               <PromptInputButton
                 variant={webSearch ? 'default' : 'ghost'}
-                onClick={() => setWebSearch(!webSearch)}>
+                onClick={() => setWebSearch(!webSearch)}
+              >
                 <GlobeIcon size={16} />
                 <span>Search</span>
               </PromptInputButton>
               <PromptInputSelect
-                onValueChange={value => {
+                onValueChange={(value) => {
                   setModel(value);
                 }}
-                value={model}>
+                value={model}
+              >
                 <PromptInputSelectTrigger>
                   <PromptInputSelectValue />
                 </PromptInputSelectTrigger>
                 <PromptInputSelectContent>
-                  {models.map(model => (
+                  {models.map((model) => (
                     <PromptInputSelectItem
                       key={model.value}
-                      value={model.value}>
+                      value={model.value}
+                    >
                       {model.name}
                     </PromptInputSelectItem>
                   ))}
@@ -227,4 +235,4 @@ export const Chat = () => {
       </div>
     </div>
   );
-};
+}
