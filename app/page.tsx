@@ -11,7 +11,7 @@ export default function Page() {
     <div className="h-screen w-full p-6">
       <div className="grid h-full grid-rows-[auto_auto_1fr] gap-6">
         <div className="grid grid-cols-12 items-center gap-6">
-          <div className="col-span-3">
+          <div className="col-span-4">
             <div className="flex flex-col gap-3">
               <Label htmlFor="Name">Patient Name</Label>
               <Input id="Name" />
@@ -23,7 +23,7 @@ export default function Page() {
               <DateRangePicker />
             </div>
           </div>
-          <div className="col-span-5 flex justify-end">
+          <div className="col-span-4 flex justify-end">
             <div className="flex gap-3">
               <span className="font-medium">Dr Doe (Clinician)</span>
               <CircleUserIcon />
