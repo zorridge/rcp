@@ -1,3 +1,5 @@
+import { CircleUserIcon } from 'lucide-react';
+
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,7 +24,10 @@ export default function Page() {
             </div>
           </div>
           <div className="col-span-5 flex justify-end">
-            <div className="rounded-md border p-3">Clinician Profile</div>
+            <div className="flex gap-3">
+              <span className="font-medium">Dr Doe (Clinician)</span>
+              <CircleUserIcon />
+            </div>
           </div>
         </div>
 
