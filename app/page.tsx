@@ -46,19 +46,17 @@ export default function Page() {
               <CardHeader>
                 <CardDescription>Path Efficiency</CardDescription>
                 <CardTitle className="text-2xl font-semibold tabular-nums">
-                  $1,250.00
+                  33%
                 </CardTitle>
                 <CardAction>
                   <Badge variant="outline">
                     <TrendingUpIcon />
-                    +12.5%
+                    +10.0%
                   </Badge>
                 </CardAction>
               </CardHeader>
               <CardFooter className="flex-col items-start text-sm">
-                <div className="text-muted-foreground">
-                  Visitors for the last 6 months
-                </div>
+                <div className="text-muted-foreground">Directness of path</div>
               </CardFooter>
             </Card>
           </div>
@@ -67,18 +65,18 @@ export default function Page() {
               <CardHeader>
                 <CardDescription>Force</CardDescription>
                 <CardTitle className="text-2xl font-semibold tabular-nums">
-                  $1,250.00
+                  100 N
                 </CardTitle>
                 <CardAction>
                   <Badge variant="outline">
                     <TrendingUpIcon />
-                    +12.5%
+                    +10.0%
                   </Badge>
                 </CardAction>
               </CardHeader>
               <CardFooter className="flex-col items-start text-sm">
                 <div className="text-muted-foreground">
-                  Visitors for the last 6 months
+                  Force produced / assistance provided
                 </div>
               </CardFooter>
             </Card>
@@ -88,18 +86,18 @@ export default function Page() {
               <CardHeader>
                 <CardDescription>Range of Motion</CardDescription>
                 <CardTitle className="text-2xl font-semibold tabular-nums">
-                  $1,250.00
+                  25 cm²
                 </CardTitle>
                 <CardAction>
                   <Badge variant="outline">
                     <TrendingUpIcon />
-                    +12.5%
+                    +10.0%
                   </Badge>
                 </CardAction>
               </CardHeader>
               <CardFooter className="flex-col items-start text-sm">
                 <div className="text-muted-foreground">
-                  Visitors for the last 6 months
+                  Maximum movement achieved
                 </div>
               </CardFooter>
             </Card>
@@ -109,18 +107,18 @@ export default function Page() {
               <CardHeader>
                 <CardDescription>SPARC</CardDescription>
                 <CardTitle className="text-2xl font-semibold tabular-nums">
-                  $1,250.00
+                  75
                 </CardTitle>
                 <CardAction>
                   <Badge variant="outline">
                     <TrendingUpIcon />
-                    +12.5%
+                    +10.0%
                   </Badge>
                 </CardAction>
               </CardHeader>
               <CardFooter className="flex-col items-start text-sm">
                 <div className="text-muted-foreground">
-                  Visitors for the last 6 months
+                  Smoothness of movement
                 </div>
               </CardFooter>
             </Card>
