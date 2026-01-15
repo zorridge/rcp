@@ -128,11 +128,11 @@ export default function Page() {
         </div>
 
         <div className="grid h-full grid-cols-12 gap-6">
-          <div className="col-span-6">
+          <div className="col-span-4">
             <Chat />
           </div>
 
-          <div className="col-span-6 rounded-md border p-4">Chart Area</div>
+          <div className="col-span-8 rounded-md border p-4">Chart Area</div>
         </div>
       </div>
     </div>
