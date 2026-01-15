@@ -1,5 +1,14 @@
-import { CircleUserIcon } from 'lucide-react';
+import { CircleUserIcon, TrendingUpIcon } from 'lucide-react';
 
+import { Badge } from '@/components/ui/badge';
+import {
+  Card,
+  CardAction,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,24 +42,88 @@ export default function Page() {
 
         <div className="grid grid-cols-12 gap-6">
           <div className="col-span-3">
-            <div className="flex h-28 items-center justify-center rounded-full border">
-              Metric 1
-            </div>
+            <Card>
+              <CardHeader>
+                <CardDescription>Path Efficiency</CardDescription>
+                <CardTitle className="text-2xl font-semibold tabular-nums">
+                  $1,250.00
+                </CardTitle>
+                <CardAction>
+                  <Badge variant="outline">
+                    <TrendingUpIcon />
+                    +12.5%
+                  </Badge>
+                </CardAction>
+              </CardHeader>
+              <CardFooter className="flex-col items-start text-sm">
+                <div className="text-muted-foreground">
+                  Visitors for the last 6 months
+                </div>
+              </CardFooter>
+            </Card>
           </div>
           <div className="col-span-3">
-            <div className="flex h-28 items-center justify-center rounded-full border">
-              Metric 2
-            </div>
+            <Card>
+              <CardHeader>
+                <CardDescription>Force</CardDescription>
+                <CardTitle className="text-2xl font-semibold tabular-nums">
+                  $1,250.00
+                </CardTitle>
+                <CardAction>
+                  <Badge variant="outline">
+                    <TrendingUpIcon />
+                    +12.5%
+                  </Badge>
+                </CardAction>
+              </CardHeader>
+              <CardFooter className="flex-col items-start text-sm">
+                <div className="text-muted-foreground">
+                  Visitors for the last 6 months
+                </div>
+              </CardFooter>
+            </Card>
           </div>
           <div className="col-span-3">
-            <div className="flex h-28 items-center justify-center rounded-full border">
-              Metric 3
-            </div>
+            <Card>
+              <CardHeader>
+                <CardDescription>Range of Motion</CardDescription>
+                <CardTitle className="text-2xl font-semibold tabular-nums">
+                  $1,250.00
+                </CardTitle>
+                <CardAction>
+                  <Badge variant="outline">
+                    <TrendingUpIcon />
+                    +12.5%
+                  </Badge>
+                </CardAction>
+              </CardHeader>
+              <CardFooter className="flex-col items-start text-sm">
+                <div className="text-muted-foreground">
+                  Visitors for the last 6 months
+                </div>
+              </CardFooter>
+            </Card>
           </div>
           <div className="col-span-3">
-            <div className="flex h-28 items-center justify-center rounded-full border">
-              Metric 4
-            </div>
+            <Card>
+              <CardHeader>
+                <CardDescription>SPARC</CardDescription>
+                <CardTitle className="text-2xl font-semibold tabular-nums">
+                  $1,250.00
+                </CardTitle>
+                <CardAction>
+                  <Badge variant="outline">
+                    <TrendingUpIcon />
+                    +12.5%
+                  </Badge>
+                </CardAction>
+              </CardHeader>
+              <CardFooter className="flex-col items-start text-sm">
+                <div className="text-muted-foreground">
+                  Visitors for the last 6 months
+                </div>
+              </CardFooter>
+            </Card>
           </div>
         </div>
 
