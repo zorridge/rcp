@@ -1,3 +1,7 @@
+import { DateRangePicker } from '@/components/ui/date-range-picker';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+
 import { Chat } from './components/chat/main';
 
 export default function Page() {
@@ -6,13 +10,17 @@ export default function Page() {
       <div className="grid h-full grid-rows-[auto_auto_1fr] gap-6">
         <div className="grid grid-cols-12 items-center gap-6">
           <div className="col-span-3">
-            <div className="rounded-md border p-3">Patient Name</div>
+            <div className="flex flex-col gap-3">
+              <Label htmlFor="Name">Patient Name</Label>
+              <Input id="Name" />
+            </div>
           </div>
-
           <div className="col-span-4">
-            <div className="rounded-md border p-3">Time Range</div>
+            <div className="flex flex-col gap-3">
+              <Label htmlFor="TimeRange">Time Range</Label>
+              <DateRangePicker />
+            </div>
           </div>
-
           <div className="col-span-5 flex justify-end">
             <div className="rounded-md border p-3">Clinician Profile</div>
           </div>
