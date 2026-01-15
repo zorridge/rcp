@@ -13,6 +13,7 @@ import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
+import { Chart } from './components/chart/main';
 import { Chat } from './components/chat/main';
 
 export default function Page() {
@@ -130,7 +131,9 @@ export default function Page() {
             <Chat />
           </div>
 
-          <div className="col-span-8 rounded-md border p-4">Chart Area</div>
+          <div className="col-span-8">
+            <Chart />
+          </div>
         </div>
       </div>
     </div>
