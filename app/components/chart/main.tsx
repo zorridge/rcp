@@ -21,24 +21,22 @@ import { MetricRow } from '@/scripts/transform';
 
 export const description = 'An interactive line chart';
 
-const chartData = [
-  { date: '2025-11-01', desktop: 222, mobile: 150 },
-  { date: '2025-11-02', desktop: 97, mobile: 180 },
-  { date: '2025-11-03', desktop: 167, mobile: 120 },
-  { date: '2025-11-04', desktop: 242, mobile: 260 },
-];
-
 const chartConfig = {
-  views: {
-    label: 'Page Views',
-  },
-  desktop: {
-    label: 'Desktop',
+  pathEfficiency: {
+    label: 'Path Efficiency',
     color: 'var(--chart-1)',
   },
-  mobile: {
-    label: 'Mobile',
+  force: {
+    label: 'Force',
     color: 'var(--chart-2)',
+  },
+  rangeOfMotion: {
+    label: 'Range of Motion',
+    color: 'var(--chart-3)',
+  },
+  sparc: {
+    label: 'SPARC',
+    color: 'var(--chart-4)',
   },
 } satisfies ChartConfig;
 
@@ -48,17 +46,44 @@ interface ChartProps {
   gameId: string;
   dateRange: DateRange | undefined;
 }
+
 export function Chart({ data, patientId, gameId, dateRange }: ChartProps) {
   const [activeChart, setActiveChart] =
-    useState<keyof typeof chartConfig>('desktop');
+    useState<keyof typeof chartConfig>('pathEfficiency');
 
-  const total = useMemo(
-    () => ({
-      desktop: chartData.reduce((acc, curr) => acc + curr.desktop, 0),
-      mobile: chartData.reduce((acc, curr) => acc + curr.mobile, 0),
-    }),
-    []
-  );
+  const chartData = useMemo(() => {
+    return data.map((row) => ({
+      timestamp: row.timestamp,
+      pathEfficiency: row.avg_efficiency,
+      force: row.avg_f_patient,
+      rangeOfMotion: row.area * 10000, // Convert m^2 to cm^2
+      sparc: row.avg_sparc,
+    }));
+  }, [data]);
+
+  const averages = useMemo(() => {
+    if (chartData.length === 0) {
+      return {
+        pathEfficiency: 0,
+        force: 0,
+        rangeOfMotion: 0,
+        sparc: 0,
+      };
+    }
+
+    return {
+      pathEfficiency:
+        chartData.reduce((acc, curr) => acc + curr.pathEfficiency, 0) /
+        chartData.length,
+      force:
+        chartData.reduce((acc, curr) => acc + curr.force, 0) / chartData.length,
+      rangeOfMotion:
+        chartData.reduce((acc, curr) => acc + curr.rangeOfMotion, 0) /
+        chartData.length,
+      sparc:
+        chartData.reduce((acc, curr) => acc + curr.sparc, 0) / chartData.length,
+    };
+  }, [chartData]);
 
   useEffect(() => {
     console.log(data);
@@ -68,30 +93,35 @@ export function Chart({ data, patientId, gameId, dateRange }: ChartProps) {
     <Card className="size-full pt-0">
       <CardHeader className="flex flex-col items-stretch border-b !p-0 sm:flex-row">
         <div className="flex flex-1 flex-col justify-center gap-1 px-6 pb-3 sm:pb-0">
-          <CardTitle>Line Chart - Interactive</CardTitle>
+          <CardTitle>Performance Metrics</CardTitle>
           <CardDescription>
-            Showing total visitors for the last 3 months
+            Showing metrics across {chartData.length} session
+            {chartData.length !== 1 ? 's' : ''}
           </CardDescription>
         </div>
-        <div className="flex">
-          {['desktop', 'mobile'].map((key) => {
-            const chart = key as keyof typeof chartConfig;
-            return (
-              <button
-                key={chart}
-                data-active={activeChart === chart}
-                className="data-[active=true]:bg-muted/50 flex flex-1 flex-col justify-center gap-1 border-t px-6 py-4 text-left even:border-l sm:border-t-0 sm:border-l sm:px-8 sm:py-6"
-                onClick={() => setActiveChart(chart)}
-              >
-                <span className="text-muted-foreground text-xs">
-                  {chartConfig[chart].label}
-                </span>
-                <span className="text-lg leading-none font-bold sm:text-3xl">
-                  {total[key as keyof typeof total].toLocaleString()}
-                </span>
-              </button>
-            );
-          })}
+        <div className="flex flex-wrap">
+          {(Object.keys(chartConfig) as Array<keyof typeof chartConfig>).map(
+            (key) => {
+              return (
+                <button
+                  key={key}
+                  data-active={activeChart === key}
+                  className="data-[active=true]:bg-muted/50 flex flex-1 flex-col justify-center gap-1 border-t px-6 py-4 text-left even:border-l sm:border-t-0 sm:border-l sm:px-8 sm:py-6"
+                  onClick={() => setActiveChart(key)}
+                >
+                  <span className="text-muted-foreground text-xs whitespace-nowrap">
+                    {chartConfig[key].label}
+                  </span>
+                  <span className="text-lg leading-none font-bold sm:text-3xl">
+                    {averages[key].toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </span>
+                </button>
+              );
+            }
+          )}
         </div>
       </CardHeader>
       <CardContent className="h-full">
@@ -109,7 +139,7 @@ export function Chart({ data, patientId, gameId, dateRange }: ChartProps) {
           >
             <CartesianGrid vertical={false} />
             <XAxis
-              dataKey="date"
+              dataKey="timestamp"
               tickLine={false}
               axisLine={false}
               tickMargin={8}
@@ -125,7 +155,7 @@ export function Chart({ data, patientId, gameId, dateRange }: ChartProps) {
             <ChartTooltip
               content={
                 <ChartTooltipContent
-                  className="w-[150px]"
+                  className="w-[200px]"
                   nameKey="views"
                   labelFormatter={(value) => {
                     return new Date(value).toLocaleDateString('en-US', {
