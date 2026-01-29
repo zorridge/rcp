@@ -1,8 +1,9 @@
 'use client';
 
 import { useChat } from '@ai-sdk/react';
+import type { DataUIPart } from 'ai';
 import { CopyIcon, GlobeIcon, RefreshCcwIcon } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import {
   Conversation,
@@ -62,11 +63,90 @@ const models = [
   },
 ];
 
+const CONTEXT_STORAGE_KEY = 'patient-chat-context';
+const CHAT_ID_STORAGE_KEY = 'patient-chat-id';
+
+type BackendStreamPayload = {
+  type?: string;
+  data?: unknown;
+  context?: unknown;
+};
+
+type ChatDataParts = {
+  backend: BackendStreamPayload;
+};
+
+type BackendDataPart = DataUIPart<ChatDataParts>;
+
 export function Chat() {
   const [input, setInput] = useState('');
   const [model, setModel] = useState<string>(models[0].value);
   const [webSearch, setWebSearch] = useState(false);
-  const { messages, sendMessage, status, regenerate } = useChat();
+  const [chatId, setChatId] = useState<string | null>(null);
+  const [context, setContext] = useState<unknown | null>(null);
+  const contextRef = useRef<unknown | null>(null);
+
+  const handleDataPart = (dataPart: BackendDataPart) => {
+    if (dataPart.type !== 'data-backend') return;
+
+    const payload = dataPart.data;
+
+    if (payload.type === 'reset') {
+      setContext(null);
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem(CONTEXT_STORAGE_KEY);
+      }
+      return;
+    }
+
+    if (payload.context !== undefined) {
+      setContext(payload.context ?? null);
+      if (typeof window !== 'undefined') {
+        try {
+          if (payload.context == null) {
+            sessionStorage.removeItem(CONTEXT_STORAGE_KEY);
+          } else {
+            sessionStorage.setItem(
+              CONTEXT_STORAGE_KEY,
+              JSON.stringify(payload.context)
+            );
+          }
+        } catch {
+          // Ignore storage write errors.
+        }
+      }
+    }
+  };
+
+  const chat = useChat({ onData: handleDataPart });
+  const { messages, sendMessage, status, regenerate } = chat;
+
+  useEffect(() => {
+    contextRef.current = context;
+  }, [context]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const storedContext = sessionStorage.getItem(CONTEXT_STORAGE_KEY);
+    if (storedContext) {
+      try {
+        setContext(JSON.parse(storedContext));
+      } catch {
+        sessionStorage.removeItem(CONTEXT_STORAGE_KEY);
+      }
+    }
+
+    let storedChatId = sessionStorage.getItem(CHAT_ID_STORAGE_KEY);
+    if (!storedChatId) {
+      storedChatId =
+        typeof crypto !== 'undefined' && 'randomUUID' in crypto
+          ? crypto.randomUUID()
+          : `chat_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+      sessionStorage.setItem(CHAT_ID_STORAGE_KEY, storedChatId);
+    }
+    setChatId(storedChatId);
+  }, []);
 
   const handleSubmit = (message: PromptInputMessage) => {
     const hasText = Boolean(message.text);
@@ -76,16 +156,23 @@ export function Chat() {
       return;
     }
 
+    const body: Record<string, unknown> = {
+      model: model,
+      webSearch: webSearch,
+    };
+
+    if (chatId) body.chatId = chatId;
+    if (contextRef.current !== null && contextRef.current !== undefined) {
+      body.context = contextRef.current;
+    }
+
     sendMessage(
       {
         text: message.text || 'Sent with attachments',
         files: message.files,
       },
       {
-        body: {
-          model: model,
-          webSearch: webSearch,
-        },
+        body,
       }
     );
     setInput('');

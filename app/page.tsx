@@ -271,12 +271,12 @@ export default function Page() {
           </div>
         </div>
 
-        <div className="grid h-full grid-cols-12 gap-6">
-          <div className="col-span-4">
+        <div className="grid h-full min-h-0 grid-cols-12 gap-6">
+          <div className="col-span-4 h-full min-h-0 overflow-y-auto">
             <Chat />
           </div>
 
-          <div className="col-span-8">
+          <div className="col-span-8 min-h-0">
             <Chart
               data={filteredMetrics}
               patientId={patientId}
