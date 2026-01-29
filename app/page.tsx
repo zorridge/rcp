@@ -45,6 +45,51 @@ export default function Page() {
     );
   }, [metrics, patientId]);
 
+  const filteredMetrics = useMemo(() => {
+    if (!patientId || !gameId) return [];
+
+    return metrics.filter((m) => {
+      if (m.patient_id !== patientId) return false;
+      if (m.game !== gameId) return false;
+
+      if (dateRange?.from || dateRange?.to) {
+        const t = new Date(m.timestamp).getTime();
+
+        if (dateRange.from && t < dateRange.from.getTime()) return false;
+        if (dateRange.to && t > dateRange.to.getTime()) return false;
+      }
+
+      return true;
+    });
+  }, [metrics, patientId, gameId, dateRange]);
+
+  const kpis = useMemo(() => {
+    if (filteredMetrics.length === 0) {
+      return {
+        efficiency: null,
+        force: null,
+        area: null,
+        sparc: null,
+      };
+    }
+
+    const avg = (key: keyof MetricRow) =>
+      filteredMetrics.reduce((sum, m) => sum + Number(m[key]), 0) /
+      filteredMetrics.length;
+
+    return {
+      efficiency: avg('avg_efficiency'),
+      force: avg('avg_f_patient'),
+      area: avg('area'),
+      sparc: avg('avg_sparc'),
+    };
+  }, [filteredMetrics]);
+
+  // @TODO remove
+  useEffect(() => {
+    console.log('filtered metrics:', filteredMetrics);
+  }, [filteredMetrics]);
+
   // *** Effects ***
   useEffect(() => {
     fetch('/data/metrics_filtered.json')
@@ -75,8 +120,6 @@ export default function Page() {
               <Select
                 value={patientId}
                 onValueChange={(value) => {
-                  setPatientId(value);
-
                   const gamesForPatient = Array.from(
                     new Set(
                       metrics
@@ -85,6 +128,7 @@ export default function Page() {
                     )
                   );
 
+                  setPatientId(value);
                   setGameId(gamesForPatient[0] ?? '');
                 }}
                 disabled={patientOptions.length === 0}
@@ -127,6 +171,10 @@ export default function Page() {
             <div className="flex flex-col gap-3">
               <Label htmlFor="TimeRange">Time Range</Label>
               <DateRangePicker
+                initialDateFrom={
+                  new Date(new Date().setFullYear(new Date().getFullYear() - 5))
+                }
+                initialDateTo={new Date(new Date().setHours(0, 0, 0, 0))}
                 onUpdate={(value) => setDateRange(value.range)}
               />
             </div>
@@ -145,7 +193,9 @@ export default function Page() {
               <CardHeader>
                 <CardDescription>Path Efficiency</CardDescription>
                 <CardTitle className="text-2xl font-semibold tabular-nums">
-                  33%
+                  {kpis.efficiency !== null
+                    ? `${kpis.efficiency.toFixed(1)}%`
+                    : '—'}
                 </CardTitle>
                 <CardAction>
                   <Badge variant="outline">
@@ -164,7 +214,7 @@ export default function Page() {
               <CardHeader>
                 <CardDescription>Force</CardDescription>
                 <CardTitle className="text-2xl font-semibold tabular-nums">
-                  100 N
+                  {kpis.force !== null ? `${kpis.force.toFixed(1)} N` : '—'}
                 </CardTitle>
                 <CardAction>
                   <Badge variant="outline">
@@ -185,7 +235,9 @@ export default function Page() {
               <CardHeader>
                 <CardDescription>Range of Motion</CardDescription>
                 <CardTitle className="text-2xl font-semibold tabular-nums">
-                  25 cm²
+                  {kpis.area !== null
+                    ? `${(kpis.area * 100 * 100).toFixed(2)} cm²`
+                    : '—'}
                 </CardTitle>
                 <CardAction>
                   <Badge variant="outline">
@@ -206,7 +258,7 @@ export default function Page() {
               <CardHeader>
                 <CardDescription>SPARC</CardDescription>
                 <CardTitle className="text-2xl font-semibold tabular-nums">
-                  75
+                  {kpis.sparc !== null ? kpis.sparc.toFixed(2) : '—'}
                 </CardTitle>
                 <CardAction>
                   <Badge variant="outline">
