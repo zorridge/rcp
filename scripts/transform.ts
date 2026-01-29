@@ -4,7 +4,7 @@ import path from 'path';
 // =====================
 // Types
 // =====================
-type OutputRow = {
+export type MetricRow = {
   patient_id: string;
   game: string;
   session: string;
@@ -25,6 +25,7 @@ const inputCsvPath = path.join(process.cwd(), 'data', 'metrics.csv');
 const outputCsvPath = path.join(process.cwd(), 'data', 'metrics_filtered.csv');
 const outputJsonPath = path.join(
   process.cwd(),
+  'public',
   'data',
   'metrics_filtered.json'
 );
@@ -32,7 +33,7 @@ const outputJsonPath = path.join(
 // =====================
 // CSV output column order
 // =====================
-const csvColumns: (keyof OutputRow)[] = [
+const csvColumns: (keyof MetricRow)[] = [
   'patient_id',
   'game',
   'session',
@@ -99,7 +100,7 @@ function buildTimestamp(dateStr: string, timestampMs: number): string {
 // =====================
 // Transform rows
 // =====================
-const rows: OutputRow[] = lines.slice(1).map((line) => {
+const rows: MetricRow[] = lines.slice(1).map((line) => {
   const values = line.split(',');
 
   const tSessionMs = Number(values[headerIndex['timestampms']]);

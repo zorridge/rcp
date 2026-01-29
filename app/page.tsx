@@ -1,4 +1,8 @@
+'use client';
+
 import { CircleUserIcon, TrendingUpIcon } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { DateRange } from 'react-day-picker';
 
 import { Badge } from '@/components/ui/badge';
 import {
@@ -10,30 +14,124 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { MetricRow } from '@/scripts/transform';
 
 import { Chart } from './components/chart/main';
 import { Chat } from './components/chat/main';
 
 export default function Page() {
+  const [metrics, setMetrics] = useState<MetricRow[]>([]);
+  const [patientOptions, setPatientOptions] = useState<string[]>([]);
+
+  const [patientId, setPatientId] = useState<string>('');
+  const [gameId, setGameId] = useState('');
+  const [dateRange, setDateRange] = useState<DateRange>();
+
+  const gameOptions = useMemo(() => {
+    if (!patientId) return [];
+
+    return Array.from(
+      new Set(
+        metrics.filter((m) => m.patient_id === patientId).map((m) => m.game)
+      )
+    );
+  }, [metrics, patientId]);
+
+  // *** Effects ***
+  useEffect(() => {
+    fetch('/data/metrics_filtered.json')
+      .then((res) => res.json())
+      .then((data: MetricRow[]) => {
+        setMetrics(data);
+
+        const patients = Array.from(new Set(data.map((d) => d.patient_id)));
+        const gamesForPatient = Array.from(
+          new Set(
+            data.filter((d) => d.patient_id === patients[0]).map((d) => d.game)
+          )
+        );
+
+        setPatientOptions(patients);
+        setPatientId(patients[0] ?? '');
+        setGameId(gamesForPatient[0] ?? '');
+      });
+  }, []);
+
   return (
     <div className="h-screen w-full p-6">
       <div className="grid h-full grid-rows-[auto_auto_1fr] gap-6">
         <div className="grid grid-cols-12 items-center gap-6">
-          <div className="col-span-4">
+          <div className="col-span-3">
             <div className="flex flex-col gap-3">
-              <Label htmlFor="Name">Patient Name</Label>
-              <Input id="Name" />
+              <Label htmlFor="PatientId">Patient ID</Label>
+              <Select
+                value={patientId}
+                onValueChange={(value) => {
+                  setPatientId(value);
+
+                  const gamesForPatient = Array.from(
+                    new Set(
+                      metrics
+                        .filter((m) => m.patient_id === value)
+                        .map((m) => m.game)
+                    )
+                  );
+
+                  setGameId(gamesForPatient[0] ?? '');
+                }}
+                disabled={patientOptions.length === 0}
+              >
+                <SelectTrigger className="w-full" id="PatientId">
+                  <SelectValue placeholder="Select Patient" />
+                </SelectTrigger>
+                <SelectContent>
+                  {patientOptions.map((opt) => (
+                    <SelectItem key={opt} value={opt}>
+                      {opt}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
-          <div className="col-span-4">
+          <div className="col-span-3">
+            <div className="flex flex-col gap-3">
+              <Label htmlFor="GameId">Game ID</Label>
+              <Select
+                value={gameId}
+                onValueChange={setGameId}
+                disabled={gameOptions.length === 0}
+              >
+                <SelectTrigger className="w-full" id="GameId">
+                  <SelectValue placeholder="Select Game" />
+                </SelectTrigger>
+                <SelectContent>
+                  {gameOptions.map((opt) => (
+                    <SelectItem key={opt} value={opt}>
+                      {opt}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="col-span-3">
             <div className="flex flex-col gap-3">
               <Label htmlFor="TimeRange">Time Range</Label>
-              <DateRangePicker />
+              <DateRangePicker
+                onUpdate={(value) => setDateRange(value.range)}
+              />
             </div>
           </div>
-          <div className="col-span-4 flex justify-end">
+          <div className="col-span-3 flex justify-end">
             <div className="flex gap-3">
               <span className="font-medium">Dr Doe (Clinician)</span>
               <CircleUserIcon />
@@ -132,7 +230,11 @@ export default function Page() {
           </div>
 
           <div className="col-span-8">
-            <Chart />
+            <Chart
+              patientId={patientId}
+              gameId={gameId}
+              dateRange={dateRange}
+            />
           </div>
         </div>
       </div>

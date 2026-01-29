@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { DateRange } from 'react-day-picker';
 import { CartesianGrid, Line, LineChart, XAxis } from 'recharts';
 
 import {
@@ -127,7 +128,12 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-export function Chart() {
+interface ChartProps {
+  patientId: string;
+  gameId: string;
+  dateRange: DateRange | undefined;
+}
+export function Chart({ patientId, gameId, dateRange }: ChartProps) {
   const [activeChart, setActiveChart] =
     React.useState<keyof typeof chartConfig>('desktop');
 
