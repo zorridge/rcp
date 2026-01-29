@@ -85,11 +85,6 @@ export default function Page() {
     };
   }, [filteredMetrics]);
 
-  // @TODO remove
-  useEffect(() => {
-    console.log('filtered metrics:', filteredMetrics);
-  }, [filteredMetrics]);
-
   // *** Effects ***
   useEffect(() => {
     fetch('/data/metrics_filtered.json')
@@ -136,7 +131,7 @@ export default function Page() {
                 <SelectTrigger className="w-full" id="PatientId">
                   <SelectValue placeholder="Select Patient" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent position="popper">
                   {patientOptions.map((opt) => (
                     <SelectItem key={opt} value={opt}>
                       {opt}
@@ -157,7 +152,7 @@ export default function Page() {
                 <SelectTrigger className="w-full" id="GameId">
                   <SelectValue placeholder="Select Game" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent position="popper">
                   {gameOptions.map((opt) => (
                     <SelectItem key={opt} value={opt}>
                       {opt}
@@ -197,12 +192,12 @@ export default function Page() {
                     ? `${kpis.efficiency.toFixed(1)}%`
                     : '—'}
                 </CardTitle>
-                <CardAction>
+                {/* <CardAction>
                   <Badge variant="outline">
                     <TrendingUpIcon />
                     +10.0%
                   </Badge>
-                </CardAction>
+                </CardAction> */}
               </CardHeader>
               <CardFooter className="flex-col items-start text-sm">
                 <div className="text-muted-foreground">Directness of path</div>
@@ -216,12 +211,12 @@ export default function Page() {
                 <CardTitle className="text-2xl font-semibold tabular-nums">
                   {kpis.force !== null ? `${kpis.force.toFixed(1)} N` : '—'}
                 </CardTitle>
-                <CardAction>
+                {/* <CardAction>
                   <Badge variant="outline">
                     <TrendingUpIcon />
                     +10.0%
                   </Badge>
-                </CardAction>
+                </CardAction> */}
               </CardHeader>
               <CardFooter className="flex-col items-start text-sm">
                 <div className="text-muted-foreground">
@@ -239,12 +234,12 @@ export default function Page() {
                     ? `${(kpis.area * 100 * 100).toFixed(2)} cm²`
                     : '—'}
                 </CardTitle>
-                <CardAction>
+                {/* <CardAction>
                   <Badge variant="outline">
                     <TrendingUpIcon />
                     +10.0%
                   </Badge>
-                </CardAction>
+                </CardAction> */}
               </CardHeader>
               <CardFooter className="flex-col items-start text-sm">
                 <div className="text-muted-foreground">
@@ -260,12 +255,12 @@ export default function Page() {
                 <CardTitle className="text-2xl font-semibold tabular-nums">
                   {kpis.sparc !== null ? kpis.sparc.toFixed(2) : '—'}
                 </CardTitle>
-                <CardAction>
+                {/* <CardAction>
                   <Badge variant="outline">
                     <TrendingUpIcon />
                     +10.0%
                   </Badge>
-                </CardAction>
+                </CardAction> */}
               </CardHeader>
               <CardFooter className="flex-col items-start text-sm">
                 <div className="text-muted-foreground">
@@ -283,6 +278,7 @@ export default function Page() {
 
           <div className="col-span-8">
             <Chart
+              data={filteredMetrics}
               patientId={patientId}
               gameId={gameId}
               dateRange={dateRange}
