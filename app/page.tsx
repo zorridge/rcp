@@ -1,6 +1,6 @@
 'use client';
 
-import { CircleUserIcon, TrendingUpIcon } from 'lucide-react';
+import { CircleUserIcon, TrendingDownIcon, TrendingUpIcon } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { DateRange } from 'react-day-picker';
 
@@ -66,22 +66,50 @@ export default function Page() {
   const kpis = useMemo(() => {
     if (filteredMetrics.length === 0) {
       return {
-        efficiency: null,
-        force: null,
-        area: null,
-        sparc: null,
+        efficiency: { value: null, change: null },
+        force: { value: null, change: null },
+        area: { value: null, change: null },
+        sparc: { value: null, change: null },
       };
     }
 
-    const avg = (key: keyof MetricRow) =>
-      filteredMetrics.reduce((sum, m) => sum + Number(m[key]), 0) /
-      filteredMetrics.length;
+    // Sort by timestamp descending to get latest first
+    const sorted = [...filteredMetrics].sort(
+      (a, b) =>
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    );
+
+    const latest = sorted[0];
+    const previous = sorted[1] ?? null;
+
+    const calcChange = (current: number, prev: number | null) =>
+      prev !== null && prev !== 0
+        ? ((current - prev) / Math.abs(prev)) * 100
+        : null;
 
     return {
-      efficiency: avg('avg_efficiency'),
-      force: avg('avg_f_patient'),
-      area: avg('area'),
-      sparc: avg('avg_sparc'),
+      efficiency: {
+        value: latest.avg_efficiency,
+        change: previous
+          ? calcChange(latest.avg_efficiency, previous.avg_efficiency)
+          : null,
+      },
+      force: {
+        value: latest.avg_f_patient,
+        change: previous
+          ? calcChange(latest.avg_f_patient, previous.avg_f_patient)
+          : null,
+      },
+      area: {
+        value: latest.area,
+        change: previous ? calcChange(latest.area, previous.area) : null,
+      },
+      sparc: {
+        value: latest.avg_sparc,
+        change: previous
+          ? calcChange(latest.avg_sparc, previous.avg_sparc)
+          : null,
+      },
     };
   }, [filteredMetrics]);
 
@@ -188,16 +216,30 @@ export default function Page() {
               <CardHeader>
                 <CardDescription>Path Efficiency</CardDescription>
                 <CardTitle className="text-2xl font-semibold tabular-nums">
-                  {kpis.efficiency !== null
-                    ? `${kpis.efficiency.toFixed(1)}%`
+                  {kpis.efficiency.value !== null
+                    ? `${kpis.efficiency.value.toFixed(1)}%`
                     : '—'}
                 </CardTitle>
-                {/* <CardAction>
-                  <Badge variant="outline">
-                    <TrendingUpIcon />
-                    +10.0%
-                  </Badge>
-                </CardAction> */}
+                <CardAction>
+                  {kpis.efficiency.change !== null && (
+                    <Badge
+                      variant="outline"
+                      className={
+                        kpis.efficiency.change >= 0
+                          ? 'text-green-600 border-green-600'
+                          : 'text-red-600 border-red-600'
+                      }
+                    >
+                      {kpis.efficiency.change >= 0 ? (
+                        <TrendingUpIcon />
+                      ) : (
+                        <TrendingDownIcon />
+                      )}
+                      {kpis.efficiency.change >= 0 ? '+' : ''}
+                      {kpis.efficiency.change.toFixed(1)}%
+                    </Badge>
+                  )}
+                </CardAction>
               </CardHeader>
               <CardFooter className="flex-col items-start text-sm">
                 <div className="text-muted-foreground">Directness of path</div>
@@ -209,14 +251,30 @@ export default function Page() {
               <CardHeader>
                 <CardDescription>Force</CardDescription>
                 <CardTitle className="text-2xl font-semibold tabular-nums">
-                  {kpis.force !== null ? `${kpis.force.toFixed(1)} N` : '—'}
+                  {kpis.force.value !== null
+                    ? `${kpis.force.value.toFixed(1)} N`
+                    : '—'}
                 </CardTitle>
-                {/* <CardAction>
-                  <Badge variant="outline">
-                    <TrendingUpIcon />
-                    +10.0%
-                  </Badge>
-                </CardAction> */}
+                <CardAction>
+                  {kpis.force.change !== null && (
+                    <Badge
+                      variant="outline"
+                      className={
+                        kpis.force.change >= 0
+                          ? 'text-green-600 border-green-600'
+                          : 'text-red-600 border-red-600'
+                      }
+                    >
+                      {kpis.force.change >= 0 ? (
+                        <TrendingUpIcon />
+                      ) : (
+                        <TrendingDownIcon />
+                      )}
+                      {kpis.force.change >= 0 ? '+' : ''}
+                      {kpis.force.change.toFixed(1)}%
+                    </Badge>
+                  )}
+                </CardAction>
               </CardHeader>
               <CardFooter className="flex-col items-start text-sm">
                 <div className="text-muted-foreground">
@@ -230,16 +288,30 @@ export default function Page() {
               <CardHeader>
                 <CardDescription>Range of Motion</CardDescription>
                 <CardTitle className="text-2xl font-semibold tabular-nums">
-                  {kpis.area !== null
-                    ? `${(kpis.area * 100 * 100).toFixed(2)} cm²`
+                  {kpis.area.value !== null
+                    ? `${(kpis.area.value * 100 * 100).toFixed(2)} cm²`
                     : '—'}
                 </CardTitle>
-                {/* <CardAction>
-                  <Badge variant="outline">
-                    <TrendingUpIcon />
-                    +10.0%
-                  </Badge>
-                </CardAction> */}
+                <CardAction>
+                  {kpis.area.change !== null && (
+                    <Badge
+                      variant="outline"
+                      className={
+                        kpis.area.change >= 0
+                          ? 'text-green-600 border-green-600'
+                          : 'text-red-600 border-red-600'
+                      }
+                    >
+                      {kpis.area.change >= 0 ? (
+                        <TrendingUpIcon />
+                      ) : (
+                        <TrendingDownIcon />
+                      )}
+                      {kpis.area.change >= 0 ? '+' : ''}
+                      {kpis.area.change.toFixed(1)}%
+                    </Badge>
+                  )}
+                </CardAction>
               </CardHeader>
               <CardFooter className="flex-col items-start text-sm">
                 <div className="text-muted-foreground">
@@ -253,14 +325,30 @@ export default function Page() {
               <CardHeader>
                 <CardDescription>SPARC</CardDescription>
                 <CardTitle className="text-2xl font-semibold tabular-nums">
-                  {kpis.sparc !== null ? kpis.sparc.toFixed(2) : '—'}
+                  {kpis.sparc.value !== null
+                    ? kpis.sparc.value.toFixed(2)
+                    : '—'}
                 </CardTitle>
-                {/* <CardAction>
-                  <Badge variant="outline">
-                    <TrendingUpIcon />
-                    +10.0%
-                  </Badge>
-                </CardAction> */}
+                <CardAction>
+                  {kpis.sparc.change !== null && (
+                    <Badge
+                      variant="outline"
+                      className={
+                        kpis.sparc.change >= 0
+                          ? 'text-green-600 border-green-600'
+                          : 'text-red-600 border-red-600'
+                      }
+                    >
+                      {kpis.sparc.change >= 0 ? (
+                        <TrendingUpIcon />
+                      ) : (
+                        <TrendingDownIcon />
+                      )}
+                      {kpis.sparc.change >= 0 ? '+' : ''}
+                      {kpis.sparc.change.toFixed(1)}%
+                    </Badge>
+                  )}
+                </CardAction>
               </CardHeader>
               <CardFooter className="flex-col items-start text-sm">
                 <div className="text-muted-foreground">
