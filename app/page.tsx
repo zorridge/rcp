@@ -1,6 +1,11 @@
 'use client';
 
-import { CircleUserIcon, TrendingDownIcon, TrendingUpIcon } from 'lucide-react';
+import {
+  CircleUserIcon,
+  HelpCircleIcon,
+  TrendingDownIcon,
+  TrendingUpIcon,
+} from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { DateRange } from 'react-day-picker';
 
@@ -14,6 +19,14 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -22,8 +35,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
+  calculateAreaCoverage,
+  formatForceInterpretation,
+  getEfficiencyGrade,
+  getSparcGrade,
+} from '@/lib/metric-helpers';
 import { MetricRow } from '@/scripts/transform';
 
+import { AreaVisualization } from './components/area-visualization/main';
 import { Chart } from './components/chart/main';
 import { Chat } from './components/chat/main';
 
@@ -134,7 +159,7 @@ export default function Page() {
   }, []);
 
   return (
-    <div className="h-screen w-full p-6">
+    <div className="min-h-screen w-full p-6">
       <div className="grid h-full grid-rows-[auto_auto_1fr] gap-6">
         <div className="grid grid-cols-12 items-center gap-6">
           <div className="col-span-3">
@@ -215,10 +240,24 @@ export default function Page() {
             <Card>
               <CardHeader>
                 <CardDescription>Path Efficiency</CardDescription>
-                <CardTitle className="text-2xl font-semibold tabular-nums">
+                <CardTitle className="flex items-center gap-2 text-2xl font-semibold tabular-nums">
                   {kpis.efficiency.value !== null
                     ? `${kpis.efficiency.value.toFixed(1)}%`
                     : '—'}
+                  {kpis.efficiency.value !== null && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span
+                          className={`inline-flex items-center justify-center rounded px-1.5 py-0.5 text-sm font-bold ${getEfficiencyGrade(kpis.efficiency.value).color}`}
+                        >
+                          {getEfficiencyGrade(kpis.efficiency.value).grade}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {getEfficiencyGrade(kpis.efficiency.value).description}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
                 </CardTitle>
                 <CardAction>
                   {kpis.efficiency.change !== null && (
@@ -226,8 +265,8 @@ export default function Page() {
                       variant="outline"
                       className={
                         kpis.efficiency.change >= 0
-                          ? 'text-green-600 border-green-600'
-                          : 'text-red-600 border-red-600'
+                          ? 'border-green-600 text-green-600'
+                          : 'border-red-600 text-red-600'
                       }
                     >
                       {kpis.efficiency.change >= 0 ? (
@@ -243,6 +282,15 @@ export default function Page() {
               </CardHeader>
               <CardFooter className="flex-col items-start text-sm">
                 <div className="text-muted-foreground">Directness of path</div>
+                {kpis.efficiency.value !== null && (
+                  <div className="text-primary mt-1 text-xs">
+                    {
+                      getEfficiencyGrade(
+                        kpis.efficiency.value
+                      ).description.split(' - ')[0]
+                    }
+                  </div>
+                )}
               </CardFooter>
             </Card>
           </div>
@@ -261,8 +309,8 @@ export default function Page() {
                       variant="outline"
                       className={
                         kpis.force.change >= 0
-                          ? 'text-green-600 border-green-600'
-                          : 'text-red-600 border-red-600'
+                          ? 'border-green-600 text-green-600'
+                          : 'border-red-600 text-red-600'
                       }
                     >
                       {kpis.force.change >= 0 ? (
@@ -280,13 +328,58 @@ export default function Page() {
                 <div className="text-muted-foreground">
                   Force produced / assistance provided
                 </div>
+                {kpis.force.value !== null && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="text-primary mt-1 cursor-help text-xs">
+                        {
+                          formatForceInterpretation(kpis.force.value)
+                            .displayText
+                        }
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Equivalent to{' '}
+                      {formatForceInterpretation(kpis.force.value).kg.toFixed(
+                        2
+                      )}{' '}
+                      kg
+                    </TooltipContent>
+                  </Tooltip>
+                )}
               </CardFooter>
             </Card>
           </div>
           <div className="col-span-3">
             <Card>
               <CardHeader>
-                <CardDescription>Range of Motion</CardDescription>
+                <CardDescription className="flex items-center gap-1">
+                  Range of Motion
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <button className="text-muted-foreground hover:text-foreground inline-flex items-center justify-center rounded-full transition-colors">
+                        <HelpCircleIcon className="size-3.5" />
+                        <span className="sr-only">
+                          Learn about range of motion
+                        </span>
+                      </button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Range of Motion Coverage</DialogTitle>
+                        <DialogDescription>
+                          Visual representation of the patient&apos;s movement
+                          area relative to the H-Man working surface.
+                        </DialogDescription>
+                      </DialogHeader>
+                      {kpis.area.value !== null && (
+                        <AreaVisualization
+                          {...calculateAreaCoverage(kpis.area.value)}
+                        />
+                      )}
+                    </DialogContent>
+                  </Dialog>
+                </CardDescription>
                 <CardTitle className="text-2xl font-semibold tabular-nums">
                   {kpis.area.value !== null
                     ? `${(kpis.area.value * 100 * 100).toFixed(2)} cm²`
@@ -298,8 +391,8 @@ export default function Page() {
                       variant="outline"
                       className={
                         kpis.area.change >= 0
-                          ? 'text-green-600 border-green-600'
-                          : 'text-red-600 border-red-600'
+                          ? 'border-green-600 text-green-600'
+                          : 'border-red-600 text-red-600'
                       }
                     >
                       {kpis.area.change >= 0 ? (
@@ -317,6 +410,14 @@ export default function Page() {
                 <div className="text-muted-foreground">
                   Maximum movement achieved
                 </div>
+                {kpis.area.value !== null && (
+                  <div className="text-primary mt-1 text-xs">
+                    {calculateAreaCoverage(kpis.area.value).percentage.toFixed(
+                      1
+                    )}
+                    % of H-Man surface
+                  </div>
+                )}
               </CardFooter>
             </Card>
           </div>
@@ -324,10 +425,24 @@ export default function Page() {
             <Card>
               <CardHeader>
                 <CardDescription>SPARC</CardDescription>
-                <CardTitle className="text-2xl font-semibold tabular-nums">
+                <CardTitle className="flex items-center gap-2 text-2xl font-semibold tabular-nums">
                   {kpis.sparc.value !== null
                     ? kpis.sparc.value.toFixed(2)
                     : '—'}
+                  {kpis.sparc.value !== null && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span
+                          className={`inline-flex items-center justify-center rounded px-1.5 py-0.5 text-sm font-bold ${getSparcGrade(kpis.sparc.value).color}`}
+                        >
+                          {getSparcGrade(kpis.sparc.value).grade}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {getSparcGrade(kpis.sparc.value).description}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
                 </CardTitle>
                 <CardAction>
                   {kpis.sparc.change !== null && (
@@ -335,8 +450,8 @@ export default function Page() {
                       variant="outline"
                       className={
                         kpis.sparc.change >= 0
-                          ? 'text-green-600 border-green-600'
-                          : 'text-red-600 border-red-600'
+                          ? 'border-green-600 text-green-600'
+                          : 'border-red-600 text-red-600'
                       }
                     >
                       {kpis.sparc.change >= 0 ? (
@@ -354,6 +469,15 @@ export default function Page() {
                 <div className="text-muted-foreground">
                   Smoothness of movement
                 </div>
+                {kpis.sparc.value !== null && (
+                  <div className="text-primary mt-1 text-xs">
+                    {
+                      getSparcGrade(kpis.sparc.value).description.split(
+                        ' - '
+                      )[0]
+                    }
+                  </div>
+                )}
               </CardFooter>
             </Card>
           </div>
