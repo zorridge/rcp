@@ -95,7 +95,7 @@ export function Chart({ data, patientId, gameId, dateRange }: ChartProps) {
         <div className="flex flex-1 flex-col justify-center gap-1 px-6 pb-3 sm:pb-0">
           <CardTitle>Performance Metrics</CardTitle>
           <CardDescription>
-            Showing metrics across {chartData.length} session
+            Showing average metrics across {chartData.length} session
             {chartData.length !== 1 ? 's' : ''}
           </CardDescription>
         </div>
