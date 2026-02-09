@@ -120,9 +120,7 @@ export function ChartWrapper({ data, children }: ChartWrapperProps) {
           })}
         </div>
       </CardHeader>
-      <CardContent className="flex-1">
-        {children(activeChart, chartData)}
-      </CardContent>
+      <CardContent>{children(activeChart, chartData)}</CardContent>
     </Card>
   );
 }
