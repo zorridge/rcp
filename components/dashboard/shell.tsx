@@ -169,7 +169,7 @@ export function DashboardShell({ renderChart }: DashboardShellProps) {
 
   return (
     <div className="flex h-screen w-full flex-col p-6">
-      <div className="grid flex-1 grid-rows-[auto_auto_1fr] gap-6">
+      <div className="grid flex-1 grid-rows-[auto_auto_1fr] gap-6 overflow-hidden">
         <div className="grid grid-cols-12 items-center gap-6">
           <div className="col-span-3">
             <div className="flex flex-col gap-3">
@@ -492,12 +492,12 @@ export function DashboardShell({ renderChart }: DashboardShellProps) {
           </div>
         </div>
 
-        <div className="grid grid-cols-12 gap-6">
-          <div className="col-span-4">
+        <div className="grid grid-cols-12 gap-6 overflow-hidden">
+          <div className="col-span-4 min-h-0">
             <Chat />
           </div>
 
-          <div className="col-span-8">
+          <div className="col-span-8 min-h-0">
             {renderChart({
               data: filteredMetrics,
               patientId,
