@@ -9,8 +9,7 @@ export type MetricRow = {
   game: string;
   session: string;
 
-  timestamp: string; // absolute ISO timestamp
-  t_session_ms: number; // session-relative timestamp (ms)
+  timestamp: string; // ISO timestamp parsed from `date`
 
   avg_efficiency: number;
   avg_f_patient: number;
@@ -38,7 +37,6 @@ const csvColumns: (keyof MetricRow)[] = [
   'game',
   'session',
   'timestamp',
-  't_session_ms',
   'avg_efficiency',
   'avg_f_patient',
   'area',
@@ -75,7 +73,6 @@ headers.forEach((h, i) => {
   'game',
   'session',
   'date',
-  'timestampms',
   'avg_efficiency',
   'avg_f_patient',
   'area',
@@ -87,25 +84,13 @@ headers.forEach((h, i) => {
 });
 
 // =====================
-// Helpers
-// =====================
-
-// dateStr format: "DD MM YYYY"
-function buildTimestamp(dateStr: string, timestampMs: number): string {
-  const [dd, mm, yyyy] = dateStr.split(' ').map(Number);
-  const baseUtc = Date.UTC(yyyy, mm - 1, dd, 0, 0, 0, 0);
-  return new Date(baseUtc + timestampMs).toISOString();
-}
-
-// =====================
 // Transform rows
 // =====================
 const rows: MetricRow[] = lines.slice(1).map((line) => {
   const values = line.split(',');
 
-  const tSessionMs = Number(values[headerIndex['timestampms']]);
-
-  const timestamp = buildTimestamp(values[headerIndex['date']], tSessionMs);
+  const dateStr = values[headerIndex['date']];
+  const timestamp = new Date(dateStr).toISOString();
 
   return {
     patient_id: values[headerIndex['patient_id']],
@@ -113,7 +98,6 @@ const rows: MetricRow[] = lines.slice(1).map((line) => {
     session: values[headerIndex['session']],
 
     timestamp,
-    t_session_ms: tSessionMs,
 
     avg_efficiency: Number(values[headerIndex['avg_efficiency']]),
     avg_f_patient: Number(values[headerIndex['avg_f_patient']]),
