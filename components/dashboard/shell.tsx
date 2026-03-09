@@ -40,10 +40,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { METRIC_CONFIG } from '@/lib/metric-config';
 import {
   calculateAreaCoverage,
-  formatForceInterpretation,
   getEfficiencyGrade,
+  getForceInterpretation,
   getSparcGrade,
 } from '@/lib/metric-helpers';
 import { MetricRow } from '@/scripts/transform';
@@ -51,6 +52,47 @@ import { MetricRow } from '@/scripts/transform';
 import { AreaVisualization } from './area-visualization';
 import { ChartNav } from './chart/nav';
 import { Chat } from './chat/main';
+
+function MetricInfoButton({
+  metricKey,
+  children,
+}: {
+  metricKey: keyof typeof METRIC_CONFIG;
+  children?: React.ReactNode;
+}) {
+  const config = METRIC_CONFIG[metricKey];
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <button className="text-muted-foreground hover:text-foreground inline-flex items-center justify-center rounded-full transition-colors">
+          <HelpCircleIcon className="size-3.5" />
+          <span className="sr-only">Learn about {config.name}</span>
+        </button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{config.name}</DialogTitle>
+          <DialogDescription>{config.why}</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3 text-sm">
+          <div>
+            <p className="text-muted-foreground mb-1 font-medium">
+              How it&apos;s calculated
+            </p>
+            <p>{config.derivation}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground mb-1 font-medium">
+              Expected range
+            </p>
+            <p>{config.bounds.summary}</p>
+          </div>
+          {children}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export interface ChartProps {
   data: MetricRow[];
@@ -246,9 +288,12 @@ export function DashboardShell({ renderChart }: DashboardShellProps) {
 
         <div className="grid grid-cols-12 gap-6">
           <div className="col-span-3">
-            <Card>
+            <Card className="h-full">
               <CardHeader>
-                <CardDescription>Path Efficiency</CardDescription>
+                <CardDescription className="flex items-center gap-1">
+                  Path Efficiency
+                  <MetricInfoButton metricKey="efficiency" />
+                </CardDescription>
                 <CardTitle className="flex items-center gap-2 text-2xl font-semibold tabular-nums">
                   {kpis.efficiency.value !== null
                     ? `${kpis.efficiency.value.toFixed(1)}%`
@@ -304,9 +349,12 @@ export function DashboardShell({ renderChart }: DashboardShellProps) {
             </Card>
           </div>
           <div className="col-span-3">
-            <Card>
+            <Card className="h-full">
               <CardHeader>
-                <CardDescription>Force</CardDescription>
+                <CardDescription className="flex items-center gap-1">
+                  Force
+                  <MetricInfoButton metricKey="force" />
+                </CardDescription>
                 <CardTitle className="text-2xl font-semibold tabular-nums">
                   {kpis.force.value !== null
                     ? `${kpis.force.value.toFixed(1)} N`
@@ -338,56 +386,25 @@ export function DashboardShell({ renderChart }: DashboardShellProps) {
                   Force produced / assistance provided
                 </div>
                 {kpis.force.value !== null && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="text-primary mt-1 cursor-help text-xs">
-                        {
-                          formatForceInterpretation(kpis.force.value)
-                            .displayText
-                        }
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      Equivalent to{' '}
-                      {formatForceInterpretation(kpis.force.value).kg.toFixed(
-                        2
-                      )}{' '}
-                      kg
-                    </TooltipContent>
-                  </Tooltip>
+                  <div className="text-primary mt-1 text-xs">
+                    {getForceInterpretation(kpis.force.value).displayText}
+                  </div>
                 )}
               </CardFooter>
             </Card>
           </div>
           <div className="col-span-3">
-            <Card>
+            <Card className="h-full">
               <CardHeader>
                 <CardDescription className="flex items-center gap-1">
                   Range of Motion
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <button className="text-muted-foreground hover:text-foreground inline-flex items-center justify-center rounded-full transition-colors">
-                        <HelpCircleIcon className="size-3.5" />
-                        <span className="sr-only">
-                          Learn about range of motion
-                        </span>
-                      </button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Range of Motion Coverage</DialogTitle>
-                        <DialogDescription>
-                          Visual representation of the patient&apos;s movement
-                          area relative to the H-Man working surface.
-                        </DialogDescription>
-                      </DialogHeader>
-                      {kpis.area.value !== null && (
-                        <AreaVisualization
-                          {...calculateAreaCoverage(kpis.area.value)}
-                        />
-                      )}
-                    </DialogContent>
-                  </Dialog>
+                  <MetricInfoButton metricKey="area">
+                    {kpis.area.value !== null && (
+                      <AreaVisualization
+                        {...calculateAreaCoverage(kpis.area.value)}
+                      />
+                    )}
+                  </MetricInfoButton>
                 </CardDescription>
                 <CardTitle className="text-2xl font-semibold tabular-nums">
                   {kpis.area.value !== null
@@ -431,9 +448,12 @@ export function DashboardShell({ renderChart }: DashboardShellProps) {
             </Card>
           </div>
           <div className="col-span-3">
-            <Card>
+            <Card className="h-full">
               <CardHeader>
-                <CardDescription>SPARC</CardDescription>
+                <CardDescription className="flex items-center gap-1">
+                  SPARC
+                  <MetricInfoButton metricKey="sparc" />
+                </CardDescription>
                 <CardTitle className="flex items-center gap-2 text-2xl font-semibold tabular-nums">
                   {kpis.sparc.value !== null
                     ? kpis.sparc.value.toFixed(2)
