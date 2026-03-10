@@ -24,7 +24,7 @@ export function LineChartView({ data }: ChartProps) {
       {(activeChart, chartData, averages) => (
         <ChartContainer
           config={chartConfig}
-          className="min-h-[300px] w-full"
+          className="max-h-[300px] min-h-[300px] w-full"
         >
           <LineChart
             accessibilityLayer

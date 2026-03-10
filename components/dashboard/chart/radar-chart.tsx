@@ -69,11 +69,9 @@ export function RadarChartView({ data }: ChartProps) {
       avg_f_patient:
         recentSlice.reduce((s, r) => s + r.avg_f_patient, 0) /
         recentSlice.length,
-      area:
-        recentSlice.reduce((s, r) => s + r.area, 0) / recentSlice.length,
+      area: recentSlice.reduce((s, r) => s + r.area, 0) / recentSlice.length,
       avg_sparc:
-        recentSlice.reduce((s, r) => s + r.avg_sparc, 0) /
-        recentSlice.length,
+        recentSlice.reduce((s, r) => s + r.avg_sparc, 0) / recentSlice.length,
     };
 
     // Compute min/max across all data for normalization
@@ -141,7 +139,7 @@ export function RadarChartView({ data }: ChartProps) {
         {radarData.length > 0 ? (
           <ChartContainer
             config={chartConfig}
-            className="aspect-square max-h-[400px] min-h-[300px] w-full"
+            className="aspect-square max-h-[300px] min-h-[300px] w-full"
           >
             <RechartsRadarChart data={radarData}>
               <ChartTooltip

@@ -67,8 +67,7 @@ export function HeatmapView({ data }: ChartProps) {
         }),
         avgEfficiency:
           rows.reduce((s, r) => s + r.avg_efficiency, 0) / rows.length,
-        avgForce:
-          rows.reduce((s, r) => s + r.avg_f_patient, 0) / rows.length,
+        avgForce: rows.reduce((s, r) => s + r.avg_f_patient, 0) / rows.length,
         avgArea: rows.reduce((s, r) => s + r.area, 0) / rows.length,
         avgSparc: rows.reduce((s, r) => s + r.avg_sparc, 0) / rows.length,
       });
@@ -168,13 +167,17 @@ export function HeatmapView({ data }: ChartProps) {
                 {row.map((cell, ci) => (
                   <div
                     key={`${ri}-${ci}`}
-                    className="relative flex aspect-square items-center justify-center rounded-sm text-xs font-medium text-white"
-                    style={{ backgroundColor: getHeatmapColor(cell.normalized) }}
+                    className="relative flex h-12 items-center justify-center rounded-sm text-xs font-medium text-white"
+                    style={{
+                      backgroundColor: getHeatmapColor(cell.normalized),
+                    }}
                     onMouseEnter={() => setHoveredCell(cell)}
                     onMouseLeave={() => setHoveredCell(null)}
                   >
                     {hoveredCell === cell && (
-                      <div className="bg-popover text-popover-foreground border-border absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 rounded-md border px-3 py-2 text-xs whitespace-nowrap shadow-md">
+                      <div
+                        className={`bg-popover text-popover-foreground border-border absolute left-1/2 z-10 -translate-x-1/2 rounded-md border px-3 py-2 text-xs whitespace-nowrap shadow-md ${ri === 0 ? 'top-full mt-2' : 'bottom-full mb-2'}`}
+                      >
                         <div className="font-semibold">{cell.metric}</div>
                         <div>
                           {cell.session} ({cell.date})
