@@ -1,5 +1,16 @@
 import { METRIC_CONFIG } from './metric-config';
 
+/**
+ * Map a normalized value (0–100) to a color on a red-to-green scale.
+ * Uses Tailwind-compatible HSL values.
+ */
+export function getHeatmapColor(normalizedValue: number): string {
+  const clamped = Math.max(0, Math.min(100, normalizedValue));
+  // Hue from 0 (red) to 120 (green)
+  const hue = (clamped / 100) * 120;
+  return `hsl(${hue}, 70%, 45%)`;
+}
+
 // H-Man working surface area in cm²
 export const HMAN_SURFACE_CM2 = 900;
 

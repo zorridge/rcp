@@ -50,7 +50,9 @@ import {
 import { MetricRow } from '@/scripts/transform';
 
 import { AreaVisualization } from './area-visualization';
-import { ChartNav } from './chart/nav';
+import { HeatmapView } from './chart/heatmap';
+import { LineChartView } from './chart/line-chart';
+import { RadarChartView } from './chart/radar-chart';
 import { Chat } from './chat/main';
 
 function MetricInfoButton({
@@ -101,11 +103,7 @@ export interface ChartProps {
   dateRange: DateRange | undefined;
 }
 
-interface DashboardShellProps {
-  renderChart: (props: ChartProps) => React.ReactNode;
-}
-
-export function DashboardShell({ renderChart }: DashboardShellProps) {
+export function DashboardShell() {
   const [metrics, setMetrics] = useState<MetricRow[]>([]);
   const [patientOptions, setPatientOptions] = useState<string[]>([]);
 
@@ -144,10 +142,11 @@ export function DashboardShell({ renderChart }: DashboardShellProps) {
   const kpis = useMemo(() => {
     if (filteredMetrics.length === 0) {
       return {
-        efficiency: { value: null, change: null },
-        force: { value: null, change: null },
-        area: { value: null, change: null },
-        sparc: { value: null, change: null },
+        efficiency: { value: null, change: null, avg: null },
+        force: { value: null, change: null, avg: null },
+        area: { value: null, change: null, avg: null },
+        sparc: { value: null, change: null, avg: null },
+        sessionCount: 0,
       };
     }
 
@@ -164,29 +163,43 @@ export function DashboardShell({ renderChart }: DashboardShellProps) {
         ? ((current - prev) / Math.abs(prev)) * 100
         : null;
 
+    const n = filteredMetrics.length;
+    const avgEfficiency =
+      filteredMetrics.reduce((s, r) => s + r.avg_efficiency, 0) / n;
+    const avgForce =
+      filteredMetrics.reduce((s, r) => s + r.avg_f_patient, 0) / n;
+    const avgArea = filteredMetrics.reduce((s, r) => s + r.area, 0) / n;
+    const avgSparc =
+      filteredMetrics.reduce((s, r) => s + r.avg_sparc, 0) / n;
+
     return {
       efficiency: {
         value: latest.avg_efficiency,
         change: previous
           ? calcChange(latest.avg_efficiency, previous.avg_efficiency)
           : null,
+        avg: avgEfficiency,
       },
       force: {
         value: latest.avg_f_patient,
         change: previous
           ? calcChange(latest.avg_f_patient, previous.avg_f_patient)
           : null,
+        avg: avgForce,
       },
       area: {
         value: latest.area,
         change: previous ? calcChange(latest.area, previous.area) : null,
+        avg: avgArea,
       },
       sparc: {
         value: latest.avg_sparc,
         change: previous
           ? calcChange(latest.avg_sparc, previous.avg_sparc)
           : null,
+        avg: avgSparc,
       },
+      sessionCount: n,
     };
   }, [filteredMetrics]);
 
@@ -209,9 +222,17 @@ export function DashboardShell({ renderChart }: DashboardShellProps) {
       });
   }, []);
 
+  const chartProps: ChartProps = {
+    data: filteredMetrics,
+    patientId,
+    gameId,
+    dateRange,
+  };
+
   return (
     <div className="flex h-screen w-full flex-col p-6">
-      <div className="grid flex-1 grid-rows-[auto_auto_1fr] gap-6 overflow-hidden">
+      <div className="flex flex-1 flex-col gap-6 overflow-hidden">
+        {/* Sticky filters row */}
         <div className="grid grid-cols-12 items-center gap-6">
           <div className="col-span-3">
             <div className="flex flex-col gap-3">
@@ -286,6 +307,7 @@ export function DashboardShell({ renderChart }: DashboardShellProps) {
           </div>
         </div>
 
+        {/* KPI cards row */}
         <div className="grid grid-cols-12 gap-6">
           <div className="col-span-3">
             <Card className="h-full">
@@ -294,6 +316,9 @@ export function DashboardShell({ renderChart }: DashboardShellProps) {
                   Path Efficiency
                   <MetricInfoButton metricKey="efficiency" />
                 </CardDescription>
+                <div className="text-muted-foreground text-[10px] uppercase tracking-wide">
+                  Latest reading
+                </div>
                 <CardTitle className="flex items-center gap-2 text-2xl font-semibold tabular-nums">
                   {kpis.efficiency.value !== null
                     ? `${kpis.efficiency.value.toFixed(1)}%`
@@ -328,7 +353,7 @@ export function DashboardShell({ renderChart }: DashboardShellProps) {
                       ) : (
                         <TrendingDownIcon />
                       )}
-                      {kpis.efficiency.change >= 0 ? '+' : ''}
+                      vs. prev {kpis.efficiency.change >= 0 ? '+' : ''}
                       {kpis.efficiency.change.toFixed(1)}%
                     </Badge>
                   )}
@@ -345,6 +370,12 @@ export function DashboardShell({ renderChart }: DashboardShellProps) {
                     }
                   </div>
                 )}
+                {kpis.efficiency.avg !== null && (
+                  <div className="text-muted-foreground mt-1 text-xs">
+                    Avg. across {kpis.sessionCount} sessions:{' '}
+                    {kpis.efficiency.avg.toFixed(1)}%
+                  </div>
+                )}
               </CardFooter>
             </Card>
           </div>
@@ -355,6 +386,9 @@ export function DashboardShell({ renderChart }: DashboardShellProps) {
                   Force
                   <MetricInfoButton metricKey="force" />
                 </CardDescription>
+                <div className="text-muted-foreground text-[10px] uppercase tracking-wide">
+                  Latest reading
+                </div>
                 <CardTitle className="text-2xl font-semibold tabular-nums">
                   {kpis.force.value !== null
                     ? `${kpis.force.value.toFixed(1)} N`
@@ -375,7 +409,7 @@ export function DashboardShell({ renderChart }: DashboardShellProps) {
                       ) : (
                         <TrendingDownIcon />
                       )}
-                      {kpis.force.change >= 0 ? '+' : ''}
+                      vs. prev {kpis.force.change >= 0 ? '+' : ''}
                       {kpis.force.change.toFixed(1)}%
                     </Badge>
                   )}
@@ -388,6 +422,12 @@ export function DashboardShell({ renderChart }: DashboardShellProps) {
                 {kpis.force.value !== null && (
                   <div className="text-primary mt-1 text-xs">
                     {getForceInterpretation(kpis.force.value).displayText}
+                  </div>
+                )}
+                {kpis.force.avg !== null && (
+                  <div className="text-muted-foreground mt-1 text-xs">
+                    Avg. across {kpis.sessionCount} sessions:{' '}
+                    {kpis.force.avg.toFixed(1)} N
                   </div>
                 )}
               </CardFooter>
@@ -406,6 +446,9 @@ export function DashboardShell({ renderChart }: DashboardShellProps) {
                     )}
                   </MetricInfoButton>
                 </CardDescription>
+                <div className="text-muted-foreground text-[10px] uppercase tracking-wide">
+                  Latest reading
+                </div>
                 <CardTitle className="text-2xl font-semibold tabular-nums">
                   {kpis.area.value !== null
                     ? `${(kpis.area.value * 100 * 100).toFixed(2)} cm²`
@@ -426,7 +469,7 @@ export function DashboardShell({ renderChart }: DashboardShellProps) {
                       ) : (
                         <TrendingDownIcon />
                       )}
-                      {kpis.area.change >= 0 ? '+' : ''}
+                      vs. prev {kpis.area.change >= 0 ? '+' : ''}
                       {kpis.area.change.toFixed(1)}%
                     </Badge>
                   )}
@@ -444,6 +487,12 @@ export function DashboardShell({ renderChart }: DashboardShellProps) {
                     % of H-Man surface
                   </div>
                 )}
+                {kpis.area.avg !== null && (
+                  <div className="text-muted-foreground mt-1 text-xs">
+                    Avg. across {kpis.sessionCount} sessions:{' '}
+                    {(kpis.area.avg * 100 * 100).toFixed(2)} cm²
+                  </div>
+                )}
               </CardFooter>
             </Card>
           </div>
@@ -454,6 +503,9 @@ export function DashboardShell({ renderChart }: DashboardShellProps) {
                   SPARC
                   <MetricInfoButton metricKey="sparc" />
                 </CardDescription>
+                <div className="text-muted-foreground text-[10px] uppercase tracking-wide">
+                  Latest reading
+                </div>
                 <CardTitle className="flex items-center gap-2 text-2xl font-semibold tabular-nums">
                   {kpis.sparc.value !== null
                     ? kpis.sparc.value.toFixed(2)
@@ -488,7 +540,7 @@ export function DashboardShell({ renderChart }: DashboardShellProps) {
                       ) : (
                         <TrendingDownIcon />
                       )}
-                      {kpis.sparc.change >= 0 ? '+' : ''}
+                      vs. prev {kpis.sparc.change >= 0 ? '+' : ''}
                       {kpis.sparc.change.toFixed(1)}%
                     </Badge>
                   )}
@@ -507,27 +559,48 @@ export function DashboardShell({ renderChart }: DashboardShellProps) {
                     }
                   </div>
                 )}
+                {kpis.sparc.avg !== null && (
+                  <div className="text-muted-foreground mt-1 text-xs">
+                    Avg. across {kpis.sessionCount} sessions:{' '}
+                    {kpis.sparc.avg.toFixed(2)}
+                  </div>
+                )}
               </CardFooter>
             </Card>
           </div>
         </div>
 
-        <div className="grid grid-cols-12 gap-6 overflow-hidden">
-          <div className="col-span-4 min-h-0">
+        {/* Scrollable content + Chat sidebar */}
+        <div className="flex flex-1 gap-6 overflow-hidden">
+          <div className="flex-1 space-y-6 overflow-y-auto">
+            <section>
+              <h2 className="text-lg font-semibold">Overall Progress</h2>
+              <p className="text-muted-foreground mb-3 text-sm">
+                At-a-glance comparison across all metrics
+              </p>
+              <RadarChartView {...chartProps} />
+            </section>
+
+            <section>
+              <h2 className="text-lg font-semibold">Metric Trends</h2>
+              <p className="text-muted-foreground mb-3 text-sm">
+                How has each metric changed over time?
+              </p>
+              <LineChartView {...chartProps} />
+            </section>
+
+            <section>
+              <h2 className="text-lg font-semibold">Session Comparison</h2>
+              <p className="text-muted-foreground mb-3 text-sm">
+                How do metrics compare across sessions?
+              </p>
+              <HeatmapView {...chartProps} />
+            </section>
+          </div>
+          <div className="w-[350px] shrink-0">
             <Chat />
           </div>
-
-          <div className="col-span-8 min-h-0">
-            {renderChart({
-              data: filteredMetrics,
-              patientId,
-              gameId,
-              dateRange,
-            })}
-          </div>
         </div>
-
-        <ChartNav />
       </div>
     </div>
   );
