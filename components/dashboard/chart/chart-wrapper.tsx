@@ -45,7 +45,8 @@ interface ChartWrapperProps {
   data: MetricRow[];
   children: (
     activeChart: ChartMetricKey,
-    chartData: ChartDataRow[]
+    chartData: ChartDataRow[],
+    averages: Record<ChartMetricKey, number>
   ) => ReactNode;
 }
 
@@ -88,13 +89,13 @@ export function ChartWrapper({ data, children }: ChartWrapperProps) {
   }, [chartData]);
 
   return (
-    <Card className="size-full pt-0">
+    <Card className="w-full pt-0">
       <CardHeader className="flex flex-col items-stretch border-b !p-0 sm:flex-row">
         <div className="flex flex-1 flex-col justify-center gap-1 px-6 pb-3 sm:pb-0">
-          <CardTitle>Performance Metrics</CardTitle>
+          <CardTitle>Metric Trends</CardTitle>
           <CardDescription>
-            Showing average metrics across {chartData.length} session
-            {chartData.length !== 1 ? 's' : ''}
+            How has each metric changed over time? ({chartData.length} session
+            {chartData.length !== 1 ? 's' : ''})
           </CardDescription>
         </div>
         <div className="flex flex-wrap">
@@ -109,6 +110,9 @@ export function ChartWrapper({ data, children }: ChartWrapperProps) {
                 <span className="text-muted-foreground text-xs whitespace-nowrap">
                   {chartConfig[key].label}
                 </span>
+                <span className="text-muted-foreground text-[10px]">
+                  Avg.
+                </span>
                 <span className="text-lg leading-none font-bold sm:text-3xl">
                   {averages[key].toLocaleString(undefined, {
                     minimumFractionDigits: 2,
@@ -120,7 +124,7 @@ export function ChartWrapper({ data, children }: ChartWrapperProps) {
           })}
         </div>
       </CardHeader>
-      <CardContent>{children(activeChart, chartData)}</CardContent>
+      <CardContent>{children(activeChart, chartData, averages)}</CardContent>
     </Card>
   );
 }

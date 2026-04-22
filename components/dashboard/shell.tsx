@@ -1,6 +1,8 @@
 'use client';
 
 import {
+  ChevronDownIcon,
+  ChevronUpIcon,
   CircleUserIcon,
   HelpCircleIcon,
   TrendingDownIcon,
@@ -40,17 +42,61 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { METRIC_CONFIG } from '@/lib/metric-config';
 import {
   calculateAreaCoverage,
-  formatForceInterpretation,
   getEfficiencyGrade,
+  getForceInterpretation,
   getSparcGrade,
 } from '@/lib/metric-helpers';
 import { MetricRow } from '@/scripts/transform';
 
 import { AreaVisualization } from './area-visualization';
-import { ChartNav } from './chart/nav';
+import { HeatmapView } from './chart/heatmap';
+import { LineChartView } from './chart/line-chart';
+import { RadarChartView } from './chart/radar-chart';
 import { Chat } from './chat/main';
+
+function MetricInfoButton({
+  metricKey,
+  children,
+}: {
+  metricKey: keyof typeof METRIC_CONFIG;
+  children?: React.ReactNode;
+}) {
+  const config = METRIC_CONFIG[metricKey];
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <button className="text-muted-foreground hover:text-foreground inline-flex items-center justify-center rounded-full transition-colors">
+          <HelpCircleIcon className="size-3.5" />
+          <span className="sr-only">Learn about {config.name}</span>
+        </button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{config.name}</DialogTitle>
+          <DialogDescription>{config.why}</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3 text-sm">
+          <div>
+            <p className="text-muted-foreground mb-1 font-medium">
+              How it&apos;s calculated
+            </p>
+            <p>{config.derivation}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground mb-1 font-medium">
+              Expected range
+            </p>
+            <p>{config.bounds.summary}</p>
+          </div>
+          {children}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export interface ChartProps {
   data: MetricRow[];
@@ -59,17 +105,14 @@ export interface ChartProps {
   dateRange: DateRange | undefined;
 }
 
-interface DashboardShellProps {
-  renderChart: (props: ChartProps) => React.ReactNode;
-}
-
-export function DashboardShell({ renderChart }: DashboardShellProps) {
+export function DashboardShell() {
   const [metrics, setMetrics] = useState<MetricRow[]>([]);
   const [patientOptions, setPatientOptions] = useState<string[]>([]);
 
   const [patientId, setPatientId] = useState<string>('');
   const [gameId, setGameId] = useState('');
   const [dateRange, setDateRange] = useState<DateRange>();
+  const [kpiExpanded, setKpiExpanded] = useState(true);
 
   const gameOptions = useMemo(() => {
     if (!patientId) return [];
@@ -102,10 +145,11 @@ export function DashboardShell({ renderChart }: DashboardShellProps) {
   const kpis = useMemo(() => {
     if (filteredMetrics.length === 0) {
       return {
-        efficiency: { value: null, change: null },
-        force: { value: null, change: null },
-        area: { value: null, change: null },
-        sparc: { value: null, change: null },
+        efficiency: { value: null, change: null, avg: null },
+        force: { value: null, change: null, avg: null },
+        area: { value: null, change: null, avg: null },
+        sparc: { value: null, change: null, avg: null },
+        sessionCount: 0,
       };
     }
 
@@ -122,29 +166,42 @@ export function DashboardShell({ renderChart }: DashboardShellProps) {
         ? ((current - prev) / Math.abs(prev)) * 100
         : null;
 
+    const n = filteredMetrics.length;
+    const avgEfficiency =
+      filteredMetrics.reduce((s, r) => s + r.avg_efficiency, 0) / n;
+    const avgForce =
+      filteredMetrics.reduce((s, r) => s + r.avg_f_patient, 0) / n;
+    const avgArea = filteredMetrics.reduce((s, r) => s + r.area, 0) / n;
+    const avgSparc = filteredMetrics.reduce((s, r) => s + r.avg_sparc, 0) / n;
+
     return {
       efficiency: {
         value: latest.avg_efficiency,
         change: previous
           ? calcChange(latest.avg_efficiency, previous.avg_efficiency)
           : null,
+        avg: avgEfficiency,
       },
       force: {
         value: latest.avg_f_patient,
         change: previous
           ? calcChange(latest.avg_f_patient, previous.avg_f_patient)
           : null,
+        avg: avgForce,
       },
       area: {
         value: latest.area,
         change: previous ? calcChange(latest.area, previous.area) : null,
+        avg: avgArea,
       },
       sparc: {
         value: latest.avg_sparc,
         change: previous
           ? calcChange(latest.avg_sparc, previous.avg_sparc)
           : null,
+        avg: avgSparc,
       },
+      sessionCount: n,
     };
   }, [filteredMetrics]);
 
@@ -167,9 +224,17 @@ export function DashboardShell({ renderChart }: DashboardShellProps) {
       });
   }, []);
 
+  const chartProps: ChartProps = {
+    data: filteredMetrics,
+    patientId,
+    gameId,
+    dateRange,
+  };
+
   return (
     <div className="flex h-screen w-full flex-col p-6">
-      <div className="grid flex-1 grid-rows-[auto_auto_1fr] gap-6 overflow-hidden">
+      <div className="flex flex-1 flex-col gap-6 overflow-hidden">
+        {/* Sticky filters row */}
         <div className="grid grid-cols-12 items-center gap-6">
           <div className="col-span-3">
             <div className="flex flex-col gap-3">
@@ -244,270 +309,408 @@ export function DashboardShell({ renderChart }: DashboardShellProps) {
           </div>
         </div>
 
-        <div className="grid grid-cols-12 gap-6">
-          <div className="col-span-3">
-            <Card>
-              <CardHeader>
-                <CardDescription>Path Efficiency</CardDescription>
-                <CardTitle className="flex items-center gap-2 text-2xl font-semibold tabular-nums">
-                  {kpis.efficiency.value !== null
-                    ? `${kpis.efficiency.value.toFixed(1)}%`
-                    : '—'}
-                  {kpis.efficiency.value !== null && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
+        {/* KPI cards — collapsible */}
+        <div>
+          <button
+            onClick={() => setKpiExpanded((prev) => !prev)}
+            className="text-muted-foreground hover:text-foreground mb-3 flex w-full items-center gap-1.5 text-xs font-medium tracking-wide uppercase transition-colors"
+          >
+            Key Metrics
+            {kpiExpanded ? (
+              <ChevronUpIcon className="size-3.5" />
+            ) : (
+              <ChevronDownIcon className="size-3.5" />
+            )}
+          </button>
+
+          {kpiExpanded ? (
+            <div className="grid grid-cols-12 gap-6">
+              <div className="col-span-3">
+                <Card className="h-full">
+                  <CardHeader>
+                    <CardDescription className="flex items-center gap-1">
+                      Path Efficiency
+                      <MetricInfoButton metricKey="efficiency" />
+                    </CardDescription>
+                    <CardTitle className="flex items-center gap-2 text-2xl font-semibold tabular-nums">
+                      {kpis.efficiency.value !== null
+                        ? `${kpis.efficiency.value.toFixed(1)}%`
+                        : '—'}
+                      {kpis.efficiency.value !== null && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span
+                              className={`inline-flex items-center justify-center rounded px-1.5 py-0.5 text-sm font-bold ${getEfficiencyGrade(kpis.efficiency.value).color}`}
+                            >
+                              {getEfficiencyGrade(kpis.efficiency.value).grade}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {
+                              getEfficiencyGrade(kpis.efficiency.value)
+                                .description
+                            }
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </CardTitle>
+                    <CardAction>
+                      {kpis.efficiency.change !== null && (
+                        <Badge
+                          variant="outline"
+                          className={
+                            kpis.efficiency.change >= 0
+                              ? 'border-green-600 text-green-600'
+                              : 'border-red-600 text-red-600'
+                          }
+                        >
+                          {kpis.efficiency.change >= 0 ? (
+                            <TrendingUpIcon />
+                          ) : (
+                            <TrendingDownIcon />
+                          )}
+                          vs. prev {kpis.efficiency.change >= 0 ? '+' : ''}
+                          {kpis.efficiency.change.toFixed(1)}%
+                        </Badge>
+                      )}
+                    </CardAction>
+                  </CardHeader>
+                  <CardFooter className="flex-col items-start text-sm">
+                    <div className="text-muted-foreground">
+                      Directness of path
+                    </div>
+                    {kpis.efficiency.value !== null && (
+                      <div className="text-primary mt-1 text-xs">
+                        {
+                          getEfficiencyGrade(
+                            kpis.efficiency.value
+                          ).description.split(' - ')[0]
+                        }
+                      </div>
+                    )}
+                    {kpis.efficiency.avg !== null && (
+                      <div className="text-muted-foreground mt-1 text-xs">
+                        Avg. across {kpis.sessionCount} sessions:{' '}
+                        {kpis.efficiency.avg.toFixed(1)}%
+                      </div>
+                    )}
+                  </CardFooter>
+                </Card>
+              </div>
+              <div className="col-span-3">
+                <Card className="h-full">
+                  <CardHeader>
+                    <CardDescription className="flex items-center gap-1">
+                      Force
+                      <MetricInfoButton metricKey="force" />
+                    </CardDescription>
+                    <CardTitle className="text-2xl font-semibold tabular-nums">
+                      {kpis.force.value !== null
+                        ? `${kpis.force.value.toFixed(1)} N`
+                        : '—'}
+                    </CardTitle>
+                    <CardAction>
+                      {kpis.force.change !== null && (
+                        <Badge
+                          variant="outline"
+                          className={
+                            kpis.force.change >= 0
+                              ? 'border-green-600 text-green-600'
+                              : 'border-red-600 text-red-600'
+                          }
+                        >
+                          {kpis.force.change >= 0 ? (
+                            <TrendingUpIcon />
+                          ) : (
+                            <TrendingDownIcon />
+                          )}
+                          vs. prev {kpis.force.change >= 0 ? '+' : ''}
+                          {kpis.force.change.toFixed(1)}%
+                        </Badge>
+                      )}
+                    </CardAction>
+                  </CardHeader>
+                  <CardFooter className="flex-col items-start text-sm">
+                    <div className="text-muted-foreground">
+                      Force produced / assistance provided
+                    </div>
+                    {kpis.force.value !== null && (
+                      <div className="text-primary mt-1 text-xs">
+                        {getForceInterpretation(kpis.force.value).displayText}
+                      </div>
+                    )}
+                    {kpis.force.avg !== null && (
+                      <div className="text-muted-foreground mt-1 text-xs">
+                        Avg. across {kpis.sessionCount} sessions:{' '}
+                        {kpis.force.avg.toFixed(1)} N
+                      </div>
+                    )}
+                  </CardFooter>
+                </Card>
+              </div>
+              <div className="col-span-3">
+                <Card className="h-full">
+                  <CardHeader>
+                    <CardDescription className="flex items-center gap-1">
+                      Range of Motion
+                      <MetricInfoButton metricKey="area">
+                        {kpis.area.value !== null && (
+                          <AreaVisualization
+                            {...calculateAreaCoverage(kpis.area.value)}
+                          />
+                        )}
+                      </MetricInfoButton>
+                    </CardDescription>
+                    <CardTitle className="text-2xl font-semibold tabular-nums">
+                      {kpis.area.value !== null
+                        ? `${(kpis.area.value * 100 * 100).toFixed(2)} cm²`
+                        : '—'}
+                    </CardTitle>
+                    <CardAction>
+                      {kpis.area.change !== null && (
+                        <Badge
+                          variant="outline"
+                          className={
+                            kpis.area.change >= 0
+                              ? 'border-green-600 text-green-600'
+                              : 'border-red-600 text-red-600'
+                          }
+                        >
+                          {kpis.area.change >= 0 ? (
+                            <TrendingUpIcon />
+                          ) : (
+                            <TrendingDownIcon />
+                          )}
+                          vs. prev {kpis.area.change >= 0 ? '+' : ''}
+                          {kpis.area.change.toFixed(1)}%
+                        </Badge>
+                      )}
+                    </CardAction>
+                  </CardHeader>
+                  <CardFooter className="flex-col items-start text-sm">
+                    <div className="text-muted-foreground">
+                      Maximum movement achieved
+                    </div>
+                    {kpis.area.value !== null && (
+                      <div className="text-primary mt-1 text-xs">
+                        {calculateAreaCoverage(
+                          kpis.area.value
+                        ).percentage.toFixed(1)}
+                        % of H-Man surface
+                      </div>
+                    )}
+                    {kpis.area.avg !== null && (
+                      <div className="text-muted-foreground mt-1 text-xs">
+                        Avg. across {kpis.sessionCount} sessions:{' '}
+                        {(kpis.area.avg * 100 * 100).toFixed(2)} cm²
+                      </div>
+                    )}
+                  </CardFooter>
+                </Card>
+              </div>
+              <div className="col-span-3">
+                <Card className="h-full">
+                  <CardHeader>
+                    <CardDescription className="flex items-center gap-1">
+                      SPARC
+                      <MetricInfoButton metricKey="sparc" />
+                    </CardDescription>
+                    <CardTitle className="flex items-center gap-2 text-2xl font-semibold tabular-nums">
+                      {kpis.sparc.value !== null
+                        ? kpis.sparc.value.toFixed(2)
+                        : '—'}
+                      {kpis.sparc.value !== null && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span
+                              className={`inline-flex items-center justify-center rounded px-1.5 py-0.5 text-sm font-bold ${getSparcGrade(kpis.sparc.value).color}`}
+                            >
+                              {getSparcGrade(kpis.sparc.value).grade}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {getSparcGrade(kpis.sparc.value).description}
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </CardTitle>
+                    <CardAction>
+                      {kpis.sparc.change !== null && (
+                        <Badge
+                          variant="outline"
+                          className={
+                            kpis.sparc.change >= 0
+                              ? 'border-green-600 text-green-600'
+                              : 'border-red-600 text-red-600'
+                          }
+                        >
+                          {kpis.sparc.change >= 0 ? (
+                            <TrendingUpIcon />
+                          ) : (
+                            <TrendingDownIcon />
+                          )}
+                          vs. prev {kpis.sparc.change >= 0 ? '+' : ''}
+                          {kpis.sparc.change.toFixed(1)}%
+                        </Badge>
+                      )}
+                    </CardAction>
+                  </CardHeader>
+                  <CardFooter className="flex-col items-start text-sm">
+                    <div className="text-muted-foreground">
+                      Smoothness of movement
+                    </div>
+                    {kpis.sparc.value !== null && (
+                      <div className="text-primary mt-1 text-xs">
+                        {
+                          getSparcGrade(kpis.sparc.value).description.split(
+                            ' - '
+                          )[0]
+                        }
+                      </div>
+                    )}
+                    {kpis.sparc.avg !== null && (
+                      <div className="text-muted-foreground mt-1 text-xs">
+                        Avg. across {kpis.sessionCount} sessions:{' '}
+                        {kpis.sparc.avg.toFixed(2)}
+                      </div>
+                    )}
+                  </CardFooter>
+                </Card>
+              </div>
+            </div>
+          ) : (
+            <Card className="gap-0 py-4">
+              <div className="grid grid-cols-4 divide-x">
+                {/* Collapsed: Path Efficiency */}
+                <div className="flex items-center justify-between px-6 py-2">
+                  <div className="grid gap-2">
+                    <div className="text-muted-foreground text-sm">
+                      Path Efficiency
+                    </div>
+                    <div className="flex items-center gap-2 text-2xl font-semibold tabular-nums">
+                      {kpis.efficiency.value !== null
+                        ? `${kpis.efficiency.value.toFixed(1)}%`
+                        : '—'}
+                      {kpis.efficiency.value !== null && (
                         <span
-                          className={`inline-flex items-center justify-center rounded px-1.5 py-0.5 text-sm font-bold ${getEfficiencyGrade(kpis.efficiency.value).color}`}
+                          className={`inline-flex rounded px-1.5 py-0.5 text-sm font-bold ${getEfficiencyGrade(kpis.efficiency.value).color}`}
                         >
                           {getEfficiencyGrade(kpis.efficiency.value).grade}
                         </span>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        {getEfficiencyGrade(kpis.efficiency.value).description}
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-                </CardTitle>
-                <CardAction>
-                  {kpis.efficiency.change !== null && (
-                    <Badge
-                      variant="outline"
-                      className={
-                        kpis.efficiency.change >= 0
-                          ? 'border-green-600 text-green-600'
-                          : 'border-red-600 text-red-600'
-                      }
-                    >
-                      {kpis.efficiency.change >= 0 ? (
-                        <TrendingUpIcon />
-                      ) : (
-                        <TrendingDownIcon />
                       )}
+                    </div>
+                  </div>
+                  {kpis.efficiency.change !== null && (
+                    <span
+                      className={`text-sm font-medium ${kpis.efficiency.change >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                    >
                       {kpis.efficiency.change >= 0 ? '+' : ''}
                       {kpis.efficiency.change.toFixed(1)}%
-                    </Badge>
+                    </span>
                   )}
-                </CardAction>
-              </CardHeader>
-              <CardFooter className="flex-col items-start text-sm">
-                <div className="text-muted-foreground">Directness of path</div>
-                {kpis.efficiency.value !== null && (
-                  <div className="text-primary mt-1 text-xs">
-                    {
-                      getEfficiencyGrade(
-                        kpis.efficiency.value
-                      ).description.split(' - ')[0]
-                    }
+                </div>
+                {/* Collapsed: Force */}
+                <div className="flex items-center justify-between px-6 py-2">
+                  <div className="grid gap-2">
+                    <div className="text-muted-foreground text-sm">Force</div>
+                    <div className="text-2xl font-semibold tabular-nums">
+                      {kpis.force.value !== null
+                        ? `${kpis.force.value.toFixed(1)} N`
+                        : '—'}
+                    </div>
                   </div>
-                )}
-              </CardFooter>
-            </Card>
-          </div>
-          <div className="col-span-3">
-            <Card>
-              <CardHeader>
-                <CardDescription>Force</CardDescription>
-                <CardTitle className="text-2xl font-semibold tabular-nums">
-                  {kpis.force.value !== null
-                    ? `${kpis.force.value.toFixed(1)} N`
-                    : '—'}
-                </CardTitle>
-                <CardAction>
                   {kpis.force.change !== null && (
-                    <Badge
-                      variant="outline"
-                      className={
-                        kpis.force.change >= 0
-                          ? 'border-green-600 text-green-600'
-                          : 'border-red-600 text-red-600'
-                      }
+                    <span
+                      className={`text-sm font-medium ${kpis.force.change >= 0 ? 'text-green-600' : 'text-red-600'}`}
                     >
-                      {kpis.force.change >= 0 ? (
-                        <TrendingUpIcon />
-                      ) : (
-                        <TrendingDownIcon />
-                      )}
                       {kpis.force.change >= 0 ? '+' : ''}
                       {kpis.force.change.toFixed(1)}%
-                    </Badge>
+                    </span>
                   )}
-                </CardAction>
-              </CardHeader>
-              <CardFooter className="flex-col items-start text-sm">
-                <div className="text-muted-foreground">
-                  Force produced / assistance provided
                 </div>
-                {kpis.force.value !== null && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="text-primary mt-1 cursor-help text-xs">
-                        {
-                          formatForceInterpretation(kpis.force.value)
-                            .displayText
-                        }
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      Equivalent to{' '}
-                      {formatForceInterpretation(kpis.force.value).kg.toFixed(
-                        2
-                      )}{' '}
-                      kg
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-              </CardFooter>
-            </Card>
-          </div>
-          <div className="col-span-3">
-            <Card>
-              <CardHeader>
-                <CardDescription className="flex items-center gap-1">
-                  Range of Motion
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <button className="text-muted-foreground hover:text-foreground inline-flex items-center justify-center rounded-full transition-colors">
-                        <HelpCircleIcon className="size-3.5" />
-                        <span className="sr-only">
-                          Learn about range of motion
-                        </span>
-                      </button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Range of Motion Coverage</DialogTitle>
-                        <DialogDescription>
-                          Visual representation of the patient&apos;s movement
-                          area relative to the H-Man working surface.
-                        </DialogDescription>
-                      </DialogHeader>
-                      {kpis.area.value !== null && (
-                        <AreaVisualization
-                          {...calculateAreaCoverage(kpis.area.value)}
-                        />
-                      )}
-                    </DialogContent>
-                  </Dialog>
-                </CardDescription>
-                <CardTitle className="text-2xl font-semibold tabular-nums">
-                  {kpis.area.value !== null
-                    ? `${(kpis.area.value * 100 * 100).toFixed(2)} cm²`
-                    : '—'}
-                </CardTitle>
-                <CardAction>
+                {/* Collapsed: Range of Motion */}
+                <div className="flex items-center justify-between px-6 py-2">
+                  <div className="grid gap-2">
+                    <div className="text-muted-foreground text-sm">
+                      Range of Motion
+                    </div>
+                    <div className="text-2xl font-semibold tabular-nums">
+                      {kpis.area.value !== null
+                        ? `${(kpis.area.value * 100 * 100).toFixed(1)} cm²`
+                        : '—'}
+                    </div>
+                  </div>
                   {kpis.area.change !== null && (
-                    <Badge
-                      variant="outline"
-                      className={
-                        kpis.area.change >= 0
-                          ? 'border-green-600 text-green-600'
-                          : 'border-red-600 text-red-600'
-                      }
+                    <span
+                      className={`text-sm font-medium ${kpis.area.change >= 0 ? 'text-green-600' : 'text-red-600'}`}
                     >
-                      {kpis.area.change >= 0 ? (
-                        <TrendingUpIcon />
-                      ) : (
-                        <TrendingDownIcon />
-                      )}
                       {kpis.area.change >= 0 ? '+' : ''}
                       {kpis.area.change.toFixed(1)}%
-                    </Badge>
+                    </span>
                   )}
-                </CardAction>
-              </CardHeader>
-              <CardFooter className="flex-col items-start text-sm">
-                <div className="text-muted-foreground">
-                  Maximum movement achieved
                 </div>
-                {kpis.area.value !== null && (
-                  <div className="text-primary mt-1 text-xs">
-                    {calculateAreaCoverage(kpis.area.value).percentage.toFixed(
-                      1
-                    )}
-                    % of H-Man surface
-                  </div>
-                )}
-              </CardFooter>
-            </Card>
-          </div>
-          <div className="col-span-3">
-            <Card>
-              <CardHeader>
-                <CardDescription>SPARC</CardDescription>
-                <CardTitle className="flex items-center gap-2 text-2xl font-semibold tabular-nums">
-                  {kpis.sparc.value !== null
-                    ? kpis.sparc.value.toFixed(2)
-                    : '—'}
-                  {kpis.sparc.value !== null && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
+                {/* Collapsed: SPARC */}
+                <div className="flex items-center justify-between px-6 py-2">
+                  <div className="grid gap-2">
+                    <div className="text-muted-foreground text-sm">SPARC</div>
+                    <div className="flex items-center gap-2 text-2xl font-semibold tabular-nums">
+                      {kpis.sparc.value !== null
+                        ? kpis.sparc.value.toFixed(2)
+                        : '—'}
+                      {kpis.sparc.value !== null && (
                         <span
-                          className={`inline-flex items-center justify-center rounded px-1.5 py-0.5 text-sm font-bold ${getSparcGrade(kpis.sparc.value).color}`}
+                          className={`inline-flex rounded px-1.5 py-0.5 text-sm font-bold ${getSparcGrade(kpis.sparc.value).color}`}
                         >
                           {getSparcGrade(kpis.sparc.value).grade}
                         </span>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        {getSparcGrade(kpis.sparc.value).description}
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-                </CardTitle>
-                <CardAction>
-                  {kpis.sparc.change !== null && (
-                    <Badge
-                      variant="outline"
-                      className={
-                        kpis.sparc.change >= 0
-                          ? 'border-green-600 text-green-600'
-                          : 'border-red-600 text-red-600'
-                      }
-                    >
-                      {kpis.sparc.change >= 0 ? (
-                        <TrendingUpIcon />
-                      ) : (
-                        <TrendingDownIcon />
                       )}
+                    </div>
+                  </div>
+                  {kpis.sparc.change !== null && (
+                    <span
+                      className={`text-sm font-medium ${kpis.sparc.change >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                    >
                       {kpis.sparc.change >= 0 ? '+' : ''}
                       {kpis.sparc.change.toFixed(1)}%
-                    </Badge>
+                    </span>
                   )}
-                </CardAction>
-              </CardHeader>
-              <CardFooter className="flex-col items-start text-sm">
-                <div className="text-muted-foreground">
-                  Smoothness of movement
                 </div>
-                {kpis.sparc.value !== null && (
-                  <div className="text-primary mt-1 text-xs">
-                    {
-                      getSparcGrade(kpis.sparc.value).description.split(
-                        ' - '
-                      )[0]
-                    }
-                  </div>
-                )}
-              </CardFooter>
+              </div>
             </Card>
-          </div>
+          )}
         </div>
 
-        <div className="grid grid-cols-12 gap-6 overflow-hidden">
-          <div className="col-span-4 min-h-0">
+        {/* Scrollable content + Chat sidebar */}
+        <div className="flex flex-1 gap-6 overflow-hidden">
+          <div className="flex-1 space-y-6 overflow-y-auto pr-4">
+            <section>
+              {/* <h2 className="text-lg font-semibold">Overall Progress</h2>
+              <p className="text-muted-foreground mb-3 text-sm">
+                At-a-glance comparison across all metrics
+              </p> */}
+              <RadarChartView {...chartProps} />
+            </section>
+
+            <section>
+              {/* <h2 className="text-lg font-semibold">Metric Trends</h2>
+              <p className="text-muted-foreground mb-3 text-sm">
+                How has each metric changed over time?
+              </p> */}
+              <LineChartView {...chartProps} />
+            </section>
+
+            <section>
+              {/* <h2 className="text-lg font-semibold">Session Comparison</h2>
+              <p className="text-muted-foreground mb-3 text-sm">
+                How do metrics compare across sessions?
+              </p> */}
+              <HeatmapView {...chartProps} />
+            </section>
+          </div>
+          <div className="w-[350px] shrink-0">
             <Chat />
           </div>
-
-          <div className="col-span-8 min-h-0">
-            {renderChart({
-              data: filteredMetrics,
-              patientId,
-              gameId,
-              dateRange,
-            })}
-          </div>
         </div>
-
-        <ChartNav />
       </div>
     </div>
   );
